@@ -19,39 +19,40 @@ module C64
       @x = Uint8.new(0x0)
       @y = Uint8.new(0x0)
 
+      @loop = Fiber.new { main_loop while true }
+
       @cycles = 0
       @instructions = 0
     end
 
     def step!
-      fetch_instruction unless @instruction && @instruction.alive?
-      cycle! while @instruction.alive?
+      @loop.resume unless @instruction
+      cycle! while @instruction
     end
 
     def cycle!
-      unless @instruction && @instruction.alive?
-        fetch_instruction
-      end
-      @instruction.resume
+      @loop.resume
       nil
     end
 
     private
 
     def fetch_instruction
-      # puts "Fetching instruction"
       @program_counter += 1
-      opcode = memory[@program_counter.to_i]
-      # puts "starting instruction #{opcode}"
-      @cycles += 1
-      @instruction = Fiber.new do
-        # Run the instruction
-        cycle { foo = :bar }
-        cycle { foo = :baz }
+      memory[@program_counter.to_i]
+    end
 
-        # puts "ending instruction"
-        @instructions += 1
-      end
+    def main_loop
+      @instruction = fetch_instruction
+      @cycles += 1
+
+      # Do the instruction here
+      cycle { 1 + 2 }
+      cycle { 3 + 4 }
+
+      @instructions += 1
+      @instruction = nil
+      Fiber.yield
     end
 
     def cycle(&block)

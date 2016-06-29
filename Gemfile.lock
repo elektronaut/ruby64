@@ -1,6 +1,7 @@
 GEM
   remote: https://rubygems.org/
   specs:
+    benchmark-ips (2.6.1)
     diff-lcs (1.2.5)
     rspec (3.4.0)
       rspec-core (~> 3.4.0)
@@ -20,4 +21,8 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  benchmark-ips
   rspec
+
+BUNDLED WITH
+   1.11.2
