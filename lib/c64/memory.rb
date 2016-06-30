@@ -25,13 +25,16 @@ module C64
     alias [] peek
 
     def peek_16(addr)
-      Uint16.new(peek(addr).to_i, peek(addr + 1).to_i)
+      Uint16.new(
+        @memory[index(addr)],
+        @memory[index(addr + 1)]
+      )
     end
 
     def poke(addr, value)
       if value.is_a?(Uint16)
-        @memory[index(addr)] = value.low.to_i
-        @memory[index(addr + 1)] = value.high.to_i
+        @memory[index(addr)] = value.high.to_i
+        @memory[index(addr + 1)] = value.low.to_i
       else
         @memory[index(addr)] = value.to_i
       end
@@ -39,11 +42,19 @@ module C64
     end
     alias []= poke
 
+    def read(addr, length)
+      (addr...(addr + length)).to_a.map { |a| peek(a) }
+    end
+
+    def write(addr, bytes)
+      Array(bytes).each_with_index { |b, i| poke(addr + i, b) }
+    end
+
     private
 
     def index(addr)
-      raise OutOfBoundsError unless in_range?(addr)
-      addr - start
+      raise OutOfBoundsError unless in_range?(addr.to_i)
+      addr.to_i - start
     end
 
     def zero_fill(initial)

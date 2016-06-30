@@ -37,28 +37,100 @@ module C64
 
     private
 
-    def fetch_instruction
+    def cycle(&block)
+      Fiber.yield
+      result = yield
+      @cycles += 1
+      result
+    end
+
+    def read_byte(addr)
+      cycle { memory[addr] }
+    end
+
+    def read_word(addr)
+      Uint16.new(read_byte(addr).to_i, read_byte(addr + 1).to_i)
+    end
+
+    def read_instruction
       @program_counter += 1
-      memory[@program_counter.to_i]
+      Instruction.find(memory[@program_counter])
+    end
+
+    def read_operand(instruction)
+      return [] unless instruction.operand?
+      if instruction.operand_length == 2
+        read_word(@program_counter + 1)
+      else
+        read_byte(@program_counter + 1)
+      end
+    end
+
+    def word(bytes)
+      Uint16.new(bytes[0], bytes[1])
+    end
+
+    def read_address(instruction, operand)
+      case instruction.addressing_mode
+      when :implied, :immediate, :accumulator
+        nil
+      when :relative
+        operand.signed + @program_counter
+      when :zeropage
+        operand
+      when :zeropage_x
+        operand + x
+      when :zeropage_y
+        operand + y
+      when :absolute
+        operand
+      when :absolute_x
+        # TODO: Handle page boundary
+        operand + x
+      when :absolute_y
+        # TODO: Handle page boundary
+        operand + y
+      when :indirect
+        # This is only used for JMP. There's no carry associated, so an
+        # indirect jump to $30FF will wrap around on the same page and read
+        # from [0x30ff, 0x3000].
+        Uint16.new(
+          read_byte(operand),
+          read_byte(Uint16.new(
+            operand.high,
+            (operand.low + 1) # Wrap around low byte
+          ))
+        )
+      when :indirect_x
+        read_word(operand + x)
+      when :indirect_y
+        # TODO: Handle page boundary
+        read_word(operand + y)
+      end
+    end
+
+    def update_status(flags = {})
+      return nil unless flags && flags.any?
+      raise "TODO: Modify processor status"
     end
 
     def main_loop
-      @instruction = fetch_instruction
+      @instruction = read_instruction
       @cycles += 1
 
-      # Do the instruction here
-      cycle { 1 + 2 }
-      cycle { 3 + 4 }
+      operand = read_operand(@instruction)
+      address = read_address(@instruction, operand)
+
+      @program_counter += @instruction.operand_length
+
+      # Run instruction and update processor status
+      update_status(
+        self.send(@instruction.name, @instruction, address, operand)
+      )
 
       @instructions += 1
       @instruction = nil
       Fiber.yield
-    end
-
-    def cycle(&block)
-      Fiber.yield
-      yield
-      @cycles += 1
     end
   end
 end

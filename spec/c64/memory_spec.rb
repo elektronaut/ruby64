@@ -79,11 +79,18 @@ describe C64::Memory do
     end
 
     context "with a 16 bit value" do
-      before { memory.poke(0x100, C64::Uint16.new(1337)) }
+      before { memory.poke(0x100, C64::Uint16.new(0x0539)) }
       it "should store the value" do
-        expect(memory.peek(0x100)).to eq(57)
-        expect(memory.peek(0x101)).to eq(5)
+        expect(memory.peek(0x100)).to eq(0x05)
+        expect(memory.peek(0x101)).to eq(0x39)
       end
+    end
+  end
+
+  describe "#write and #read" do
+    before { memory.write(0x2000, [0x0a, 0x09, 0x08, 0x07]) }
+    it "should write the bytes" do
+      expect(memory.read(0x2000, 4)).to eq([0x0a, 0x09, 0x08, 0x07])
     end
   end
 end
