@@ -94,6 +94,10 @@ module C64
     def mask
       0xff
     end
+
+    def signed
+      value > 127 ? value - 256 : value
+    end
   end
 
   # 16 bit integer, unsigned

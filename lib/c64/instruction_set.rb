@@ -17,14 +17,30 @@ module C64
       raise "TODO"
     end
 
-    # Branch on carry clear
+    # Branch on carry clear.
+    #
+    # Addressing  Opcode   Cycles
+    # ---------------------------
+    # relative    90       2/3/4
+    #
+    # Flags: None
     def bcc(instruction, addr, operand)
-      raise "TODO"
+      return if status.carry?
+      cycle {} if addr.high != @program_counter.high
+      cycle { @program_counter = addr }
     end
 
-    # Branch on carry set
+    # Branch on carry set.
+    #
+    # Addressing  Opcode   Cycles
+    # ---------------------------
+    # relative    B0       2/3/4
+    #
+    # Flags: None
     def bcs(instruction, addr, operand)
-      raise "TODO"
+      return unless status.carry?
+      cycle {} if addr.high != @program_counter.high
+      cycle { @program_counter = addr }
     end
 
     # Branch on equal (zero set)
@@ -127,14 +143,28 @@ module C64
       raise "TODO"
     end
 
-    # Increment X
+    # Increment X.
+    #
+    # Addressing  Opcode   Cycles
+    # ---------------------------
+    # implied     E8       2
+    #
+    # Flags: N, Z
     def inx(instruction, addr, operand)
-      raise "TODO"
+      cycle { @x += 1 }
+      update_number_flags(@x)
     end
 
-    # Increment Y
+    # Increment Y.
+    #
+    # Addressing  Opcode   Cycles
+    # ---------------------------
+    # implied     C8       2
+    #
+    # Flags: N, Z
     def iny(instruction, addr, operand)
-      raise "TODO"
+      cycle { @y += 1 }
+      update_number_flags(@y)
     end
 
     # Jump to new location.
@@ -147,7 +177,6 @@ module C64
     # Flags: none
     def jmp(instruction, addr, operand)
       @program_counter = addr
-      nil
     end
 
     # Jump subroutine
@@ -175,9 +204,15 @@ module C64
       raise "TODO"
     end
 
-    # No operation
+    # No operation,
+    #
+    # Addressing  Opcode   Cycles
+    # ---------------------------
+    # absolute    EA       2
+    #
+    # Flags: none
     def nop(instruction, addr, operand)
-      raise "TODO"
+      cycle { nil }
     end
 
     # Or with accumulator
@@ -288,6 +323,13 @@ module C64
     # Transfer Y to accumulator
     def tya(instruction, addr, operand)
       raise "TODO"
+    end
+
+    private
+
+    def update_number_flags(value)
+      status.zero = (value == 0)
+      status.negative = (value >> 7 == 1)
     end
   end
 end

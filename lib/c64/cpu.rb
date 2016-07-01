@@ -4,7 +4,7 @@ module C64
 
     attr_reader :memory
     attr_reader :program_counter, :stack_pointer
-    attr_reader :p, :a, :x, :y
+    attr_reader :status, :a, :x, :y
 
     attr_reader :cycles, :instructions
 
@@ -14,7 +14,7 @@ module C64
       @program_counter = @memory.peek_16(0xfffc)
       # Stack pointer starts at 0x01ff and grows down
       @stack_pointer = Uint8.new(0xff)
-      @p = Uint8.new(0x0)
+      @status = Status.new(0x00)
       @a = Uint8.new(0x0)
       @x = Uint8.new(0x0)
       @y = Uint8.new(0x0)
@@ -23,6 +23,14 @@ module C64
 
       @cycles = 0
       @instructions = 0
+    end
+
+    def p
+      @status.value
+    end
+
+    def p=(new_value)
+      @status.value = new_value
     end
 
     def step!
@@ -75,7 +83,7 @@ module C64
       when :implied, :immediate, :accumulator
         nil
       when :relative
-        operand.signed + @program_counter
+        @program_counter + operand.signed
       when :zeropage
         operand
       when :zeropage_x
@@ -109,11 +117,6 @@ module C64
       end
     end
 
-    def update_status(flags = {})
-      return nil unless flags && flags.any?
-      raise "TODO: Modify processor status"
-    end
-
     def main_loop
       @instruction = read_instruction
       @cycles += 1
@@ -124,9 +127,7 @@ module C64
       @program_counter += @instruction.operand_length
 
       # Run instruction and update processor status
-      update_status(
-        self.send(@instruction.name, @instruction, address, operand)
-      )
+      self.send(@instruction.name, @instruction, address, operand)
 
       @instructions += 1
       @instruction = nil

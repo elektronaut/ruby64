@@ -76,4 +76,10 @@ describe C64::Uint8 do
     expect(int(0b00000010)[0]).to eq(0)
     expect(int(0b00000010)[1]).to eq(1)
   end
+
+  it "can return a signed number" do
+    expect(int(127).signed).to eq(127)
+    expect(int(128).signed).to eq(-128)
+    expect(int(255).signed).to eq(-1)
+  end
 end

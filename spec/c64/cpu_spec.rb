@@ -12,11 +12,90 @@ describe C64::CPU do
     steps.times { cpu.step! }
   end
 
+  describe "BCC" do
+    let(:carry) { false }
+    let(:offset) { 0x20 }
+    before do
+      cpu.status.carry = carry
+      execute([0x90, offset])
+    end
+
+    context "when carry is set" do
+      let(:carry) { true }
+      it "should not branch" do
+        expect(cpu.program_counter).to eq(0xc001)
+        expect(cpu.cycles).to eq(2)
+      end
+    end
+
+    context "when carry is clear" do
+      it "should branch" do
+        expect(cpu.program_counter).to eq(0xc020)
+        expect(cpu.cycles).to eq(3)
+      end
+    end
+
+    context "branching across page boundary" do
+      let(:offset) { C64::Uint8.new(-100) }
+      it "should spend an extra cycle" do
+        expect(cpu.program_counter).to eq(0xbf9c)
+        expect(cpu.cycles).to eq(4)
+      end
+    end
+  end
+
+  describe "BCS" do
+    let(:carry) { true }
+    let(:offset) { 0x20 }
+    before do
+      cpu.status.carry = carry
+      execute([0xb0, offset])
+    end
+
+    context "when carry is set" do
+      let(:carry) { false }
+      it "should not branch" do
+        expect(cpu.program_counter).to eq(0xc001)
+        expect(cpu.cycles).to eq(2)
+      end
+    end
+
+    context "when carry is clear" do
+      it "should branch" do
+        expect(cpu.program_counter).to eq(0xc020)
+        expect(cpu.cycles).to eq(3)
+      end
+    end
+
+    context "branching across page boundary" do
+      let(:offset) { C64::Uint8.new(-100) }
+      it "should spend an extra cycle" do
+        expect(cpu.cycles).to eq(4)
+      end
+    end
+  end
+
+  describe "INX" do
+    before { execute([0xe8]) }
+    it "should increment x by 1" do
+      expect(cpu.x).to eq(1)
+      expect(cpu.cycles).to eq(2)
+    end
+  end
+
+  describe "INY" do
+    before { execute([0xc8]) }
+    it "should increment y by 1" do
+      expect(cpu.y).to eq(1)
+      expect(cpu.cycles).to eq(2)
+    end
+  end
+
   describe "JMP" do
     context "absolute addressing" do
       before { execute([0x4c, 0x05, 0x39]) }
       it "should update the program counter" do
-        expect(cpu.program_counter).to eq(1337)
+        expect(cpu.program_counter).to eq(0x0539)
         expect(cpu.cycles).to eq(3)
       end
     end
@@ -26,9 +105,8 @@ describe C64::CPU do
         memory.write(0x2120, [0x05, 0x39])
         execute([0x6c, 0x21, 0x20])
       end
-      before {  }
       it "should update the program counter" do
-        expect(cpu.program_counter).to eq(1337)
+        expect(cpu.program_counter).to eq(0x0539)
         expect(cpu.cycles).to eq(5)
       end
     end
@@ -38,11 +116,17 @@ describe C64::CPU do
         memory.write(0x21ff, [0x05, 0x39])
         execute([0x6c, 0x21, 0xff])
       end
-      before {  }
       it "should update the program counter" do
         expect(cpu.program_counter).to eq(0x0500)
         expect(cpu.cycles).to eq(5)
       end
+    end
+  end
+
+  describe "NOP" do
+    before { execute([0xea]) }
+    it "should spend 2 cycles" do
+      expect(cpu.cycles).to eq(2)
     end
   end
 end
