@@ -2,7 +2,7 @@ module C64
   # http://www.6502.org/tutorials/6502opcodes.html
   # http://www.e-tradition.net/bytes/6502/6502_instruction_set.html
   module InstructionSet
-    # Add with carry
+    # Add with carry.
     def adc(instruction, addr, operand)
       raise "TODO"
     end
@@ -25,9 +25,7 @@ module C64
     #
     # Flags: None
     def bcc(instruction, addr, operand)
-      return if status.carry?
-      cycle {} if addr.high != @program_counter.high
-      cycle { @program_counter = addr }
+      branch(addr) if !status.carry?
     end
 
     # Branch on carry set.
@@ -38,14 +36,18 @@ module C64
     #
     # Flags: None
     def bcs(instruction, addr, operand)
-      return unless status.carry?
-      cycle {} if addr.high != @program_counter.high
-      cycle { @program_counter = addr }
+      branch(addr) if status.carry?
     end
 
     # Branch on equal (zero set)
+    #
+    # Addressing  Opcode   Cycles
+    # ---------------------------
+    # relative    F0       2/3/4
+    #
+    # Flags: None
     def beq(instruction, addr, operand)
-      raise "TODO"
+      branch(addr) if status.zero?
     end
 
     # Bit test
@@ -53,19 +55,37 @@ module C64
       raise "TODO"
     end
 
-    # Branch on minus (negative set)
+    # Branch on minus (negative set).
+    #
+    # Addressing  Opcode   Cycles
+    # ---------------------------
+    # relative    30       2/3/4
+    #
+    # Flags: None
     def bmi(instruction, addr, operand)
-      raise "TODO"
+      branch(addr) if status.negative?
     end
 
-    # Branch on not equal (zero clear)
+    # Branch on not equal (zero clear).
+    #
+    # Addressing  Opcode   Cycles
+    # ---------------------------
+    # relative    D0       2/3/4
+    #
+    # Flags: None
     def bne(instruction, addr, operand)
-      raise "TODO"
+      branch(addr) if !status.zero?
     end
 
-    # Branch on plus (negative clear)
+    # Branch on plus (negative clear).
+    #
+    # Addressing  Opcode   Cycles
+    # ---------------------------
+    # relative    10       2/3/4
+    #
+    # Flags: None
     def bpl(instruction, addr, operand)
-      raise "TODO"
+      branch(addr) if !status.negative?
     end
 
     # Interrupt
@@ -73,14 +93,26 @@ module C64
       raise "TODO"
     end
 
-    # Branch on overflow clear
+    # Branch on overflow clear.
+    #
+    # Addressing  Opcode   Cycles
+    # ---------------------------
+    # relative    50       2/3/4
+    #
+    # Flags: None
     def bvc(instruction, addr, operand)
-      raise "TODO"
+      branch(addr) if !status.overflow?
     end
 
-    # Branch on overflow set
+    # Branch on overflow set.
+    #
+    # Addressing  Opcode   Cycles
+    # ---------------------------
+    # relative    70       2/3/4
+    #
+    # Flags: None
     def bvs(instruction, addr, operand)
-      raise "TODO"
+      branch(addr) if status.overflow?
     end
 
     # Clear carry
@@ -326,6 +358,11 @@ module C64
     end
 
     private
+
+    def branch(addr)
+      cycle {} if addr.high != @program_counter.high
+      cycle { @program_counter = addr }
+    end
 
     def update_number_flags(value)
       status.zero = (value == 0)

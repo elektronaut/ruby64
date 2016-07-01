@@ -20,7 +20,7 @@ describe C64::CPU do
       execute([0x90, offset])
     end
 
-    context "when carry is set" do
+    context "when flag is set" do
       let(:carry) { true }
       it "should not branch" do
         expect(cpu.program_counter).to eq(0xc001)
@@ -28,7 +28,7 @@ describe C64::CPU do
       end
     end
 
-    context "when carry is clear" do
+    context "when flag is clear" do
       it "should branch" do
         expect(cpu.program_counter).to eq(0xc020)
         expect(cpu.cycles).to eq(3)
@@ -52,7 +52,7 @@ describe C64::CPU do
       execute([0xb0, offset])
     end
 
-    context "when carry is set" do
+    context "when flag is clear" do
       let(:carry) { false }
       it "should not branch" do
         expect(cpu.program_counter).to eq(0xc001)
@@ -60,7 +60,193 @@ describe C64::CPU do
       end
     end
 
-    context "when carry is clear" do
+    context "when flag is set" do
+      it "should branch" do
+        expect(cpu.program_counter).to eq(0xc020)
+        expect(cpu.cycles).to eq(3)
+      end
+    end
+
+    context "branching across page boundary" do
+      let(:offset) { C64::Uint8.new(-100) }
+      it "should spend an extra cycle" do
+        expect(cpu.cycles).to eq(4)
+      end
+    end
+  end
+
+  describe "BEQ" do
+    let(:zero) { true }
+    let(:offset) { 0x20 }
+    before do
+      cpu.status.zero = zero
+      execute([0xf0, offset])
+    end
+
+    context "when flag is clear" do
+      let(:zero) { false }
+      it "should not branch" do
+        expect(cpu.program_counter).to eq(0xc001)
+        expect(cpu.cycles).to eq(2)
+      end
+    end
+
+    context "when flag is set" do
+      it "should branch" do
+        expect(cpu.program_counter).to eq(0xc020)
+        expect(cpu.cycles).to eq(3)
+      end
+    end
+
+    context "branching across page boundary" do
+      let(:offset) { C64::Uint8.new(-100) }
+      it "should spend an extra cycle" do
+        expect(cpu.cycles).to eq(4)
+      end
+    end
+  end
+
+  describe "BMI" do
+    let(:negative) { true }
+    let(:offset) { 0x20 }
+    before do
+      cpu.status.negative = negative
+      execute([0x30, offset])
+    end
+
+    context "when negative is clear" do
+      let(:negative) { false }
+      it "should not branch" do
+        expect(cpu.program_counter).to eq(0xc001)
+        expect(cpu.cycles).to eq(2)
+      end
+    end
+
+    context "when negative is set" do
+      it "should branch" do
+        expect(cpu.program_counter).to eq(0xc020)
+        expect(cpu.cycles).to eq(3)
+      end
+    end
+
+    context "branching across page boundary" do
+      let(:offset) { C64::Uint8.new(-100) }
+      it "should spend an extra cycle" do
+        expect(cpu.cycles).to eq(4)
+      end
+    end
+  end
+
+  describe "BNE" do
+    let(:zero) { false }
+    let(:offset) { 0x20 }
+    before do
+      cpu.status.zero = zero
+      execute([0xd0, offset])
+    end
+
+    context "when flag is set" do
+      let(:zero) { true }
+      it "should not branch" do
+        expect(cpu.program_counter).to eq(0xc001)
+        expect(cpu.cycles).to eq(2)
+      end
+    end
+
+    context "when flag is clear" do
+      it "should branch" do
+        expect(cpu.program_counter).to eq(0xc020)
+        expect(cpu.cycles).to eq(3)
+      end
+    end
+
+    context "branching across page boundary" do
+      let(:offset) { C64::Uint8.new(-100) }
+      it "should spend an extra cycle" do
+        expect(cpu.cycles).to eq(4)
+      end
+    end
+  end
+
+  describe "BPL" do
+    let(:negative) { false }
+    let(:offset) { 0x20 }
+    before do
+      cpu.status.negative = negative
+      execute([0x10, offset])
+    end
+
+    context "when flag is set" do
+      let(:negative) { true }
+      it "should not branch" do
+        expect(cpu.program_counter).to eq(0xc001)
+        expect(cpu.cycles).to eq(2)
+      end
+    end
+
+    context "when flag is clear" do
+      it "should branch" do
+        expect(cpu.program_counter).to eq(0xc020)
+        expect(cpu.cycles).to eq(3)
+      end
+    end
+
+    context "branching across page boundary" do
+      let(:offset) { C64::Uint8.new(-100) }
+      it "should spend an extra cycle" do
+        expect(cpu.cycles).to eq(4)
+      end
+    end
+  end
+
+  describe "BVC" do
+    let(:overflow) { false }
+    let(:offset) { 0x20 }
+    before do
+      cpu.status.overflow = overflow
+      execute([0x50, offset])
+    end
+
+    context "when flag is set" do
+      let(:overflow) { true }
+      it "should not branch" do
+        expect(cpu.program_counter).to eq(0xc001)
+        expect(cpu.cycles).to eq(2)
+      end
+    end
+
+    context "when flag is clear" do
+      it "should branch" do
+        expect(cpu.program_counter).to eq(0xc020)
+        expect(cpu.cycles).to eq(3)
+      end
+    end
+
+    context "branching across page boundary" do
+      let(:offset) { C64::Uint8.new(-100) }
+      it "should spend an extra cycle" do
+        expect(cpu.cycles).to eq(4)
+      end
+    end
+  end
+
+  describe "BVS" do
+    let(:overflow) { true }
+    let(:offset) { 0x20 }
+    before do
+      cpu.status.overflow = overflow
+      execute([0x70, offset])
+    end
+
+    context "when flag is clear" do
+      let(:overflow) { false }
+      it "should not branch" do
+        expect(cpu.program_counter).to eq(0xc001)
+        expect(cpu.cycles).to eq(2)
+      end
+    end
+
+    context "when flag is set" do
       it "should branch" do
         expect(cpu.program_counter).to eq(0xc020)
         expect(cpu.cycles).to eq(3)
