@@ -14,6 +14,17 @@ describe C64::CPU do
     steps.times { cpu.step! }
   end
 
+  describe "AND" do
+    before do
+      cpu.a = 0b00001111
+      execute([0x29, 0b10101010])
+    end
+    it "should do a bitwise AND on the accumulator" do
+      expect(cpu.a).to eq(0b00001010)
+      expect(cpu.cycles).to eq(2)
+    end
+  end
+
   describe "BCC" do
     let(:carry) { false }
     let(:offset) { 0x20 }
@@ -490,10 +501,76 @@ describe C64::CPU do
     end
   end
 
+  describe "LDX" do
+    before { execute([0xa2, 0x40]) }
+    it "should set the accumulator" do
+      expect(cpu.x).to eq(0x40)
+      expect(cpu.cycles).to eq(2)
+    end
+  end
+
+  describe "LDY" do
+    before { execute([0xa0, 0x40]) }
+    it "should set the accumulator" do
+      expect(cpu.y).to eq(0x40)
+      expect(cpu.cycles).to eq(2)
+    end
+  end
+
   describe "NOP" do
     before { execute([0xea]) }
     it "should spend 2 cycles" do
       expect(cpu.cycles).to eq(2)
+    end
+  end
+
+  describe "PHA" do
+    before do
+      cpu.a = 0x40
+      execute([0x48])
+    end
+    it "should push the accumulator on the stack" do
+      expect(memory.peek(0x01ff)).to eq(0x40)
+      expect(cpu.stack_pointer).to eq(0xfe)
+      expect(cpu.cycles).to eq(3)
+    end
+  end
+
+  describe "PHP" do
+    before do
+      cpu.p = 0b10101010
+      execute([0x08])
+    end
+    it "should push the processor status on the stack" do
+      expect(memory.peek(0x01ff)).to eq(0b10101010)
+      expect(cpu.stack_pointer).to eq(0xfe)
+      expect(cpu.cycles).to eq(3)
+    end
+  end
+
+  describe "PLA" do
+    before do
+      memory.poke(0x01ff, 0x20)
+      cpu.stack_pointer = 0xfe
+      execute([0x68])
+    end
+    it "should pull the accumulator from the stack" do
+      expect(cpu.a).to eq(0x20)
+      expect(cpu.stack_pointer).to eq(0xff)
+      expect(cpu.cycles).to eq(4)
+    end
+  end
+
+  describe "PLP" do
+    before do
+      memory.poke(0x01ff, 0b10101010)
+      cpu.stack_pointer = 0xfe
+      execute([0x28])
+    end
+    it "should pull the processor status from the stack" do
+      expect(cpu.p).to eq(0b10101010)
+      expect(cpu.stack_pointer).to eq(0xff)
+      expect(cpu.cycles).to eq(4)
     end
   end
 end

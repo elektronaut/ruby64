@@ -3,17 +3,18 @@ module C64
   # http://www.e-tradition.net/bytes/6502/6502_instruction_set.html
   module InstructionSet
     # Add with carry.
-    def adc(instruction, addr, operand)
+    def adc(instruction, addr, value)
       raise "TODO"
     end
 
     # And (with accumulator)
-    def and(instruction, addr, operand)
-      raise "TODO"
+    def and(instruction, addr, value)
+      @a &= value.call
+      update_number_flags(@a)
     end
 
     # Arithmetic shift left
-    def asl(instruction, addr, operand)
+    def asl(instruction, addr, value)
       raise "TODO"
     end
 
@@ -24,7 +25,7 @@ module C64
     # relative    90       2/3/4
     #
     # Flags: None
-    def bcc(instruction, addr, operand)
+    def bcc(instruction, addr, value)
       branch(addr) if !status.carry?
     end
 
@@ -35,7 +36,7 @@ module C64
     # relative    B0       2/3/4
     #
     # Flags: None
-    def bcs(instruction, addr, operand)
+    def bcs(instruction, addr, value)
       branch(addr) if status.carry?
     end
 
@@ -46,12 +47,12 @@ module C64
     # relative    F0       2/3/4
     #
     # Flags: None
-    def beq(instruction, addr, operand)
+    def beq(instruction, addr, value)
       branch(addr) if status.zero?
     end
 
     # Bit test
-    def bit(instruction, addr, operand)
+    def bit(instruction, addr, value)
       raise "TODO"
     end
 
@@ -62,7 +63,7 @@ module C64
     # relative    30       2/3/4
     #
     # Flags: None
-    def bmi(instruction, addr, operand)
+    def bmi(instruction, addr, value)
       branch(addr) if status.negative?
     end
 
@@ -73,7 +74,7 @@ module C64
     # relative    D0       2/3/4
     #
     # Flags: None
-    def bne(instruction, addr, operand)
+    def bne(instruction, addr, value)
       branch(addr) if !status.zero?
     end
 
@@ -84,12 +85,12 @@ module C64
     # relative    10       2/3/4
     #
     # Flags: None
-    def bpl(instruction, addr, operand)
+    def bpl(instruction, addr, value)
       branch(addr) if !status.negative?
     end
 
     # Interrupt
-    def brk(instruction, addr, operand)
+    def brk(instruction, addr, value)
       raise "TODO"
     end
 
@@ -100,7 +101,7 @@ module C64
     # relative    50       2/3/4
     #
     # Flags: None
-    def bvc(instruction, addr, operand)
+    def bvc(instruction, addr, value)
       branch(addr) if !status.overflow?
     end
 
@@ -111,7 +112,7 @@ module C64
     # relative    70       2/3/4
     #
     # Flags: None
-    def bvs(instruction, addr, operand)
+    def bvs(instruction, addr, value)
       branch(addr) if status.overflow?
     end
 
@@ -122,7 +123,7 @@ module C64
     # implied     18       2
     #
     # Flags: C
-    def clc(instruction, addr, operand)
+    def clc(instruction, addr, value)
       cycle { status.carry = false }
     end
 
@@ -133,7 +134,7 @@ module C64
     # implied     D8       2
     #
     # Flags: D
-    def cld(instruction, addr, operand)
+    def cld(instruction, addr, value)
       cycle { status.decimal = false }
     end
 
@@ -144,7 +145,7 @@ module C64
     # implied     58       2
     #
     # Flags: I
-    def cli(instruction, addr, operand)
+    def cli(instruction, addr, value)
       cycle { status.interrupt = false }
     end
 
@@ -155,27 +156,27 @@ module C64
     # implied     B8       2
     #
     # Flags: V
-    def clv(instruction, addr, operand)
+    def clv(instruction, addr, value)
       cycle { status.overflow = false }
     end
 
     # Compare (with accumulator)
-    def cmp(instruction, addr, operand)
+    def cmp(instruction, addr, value)
       raise "TODO"
     end
 
     # Compare with X
-    def cpx(instruction, addr, operand)
+    def cpx(instruction, addr, value)
       raise "TODO"
     end
 
     # Compare with Y
-    def cpy(instruction, addr, operand)
+    def cpy(instruction, addr, value)
       raise "TODO"
     end
 
     # Decrement
-    def dec(instruction, addr, operand)
+    def dec(instruction, addr, value)
       raise "TODO"
     end
 
@@ -186,7 +187,7 @@ module C64
     # implied     CA       2
     #
     # Flags: V
-    def dex(instruction, addr, operand)
+    def dex(instruction, addr, value)
       cycle { @x -= 1 }
       update_number_flags(@x)
     end
@@ -198,18 +199,18 @@ module C64
     # implied     88       2
     #
     # Flags: V
-    def dey(instruction, addr, operand)
+    def dey(instruction, addr, value)
       cycle { @y -= 1 }
       update_number_flags(@y)
     end
 
     # Exclusive or (with accumulator)
-    def eor(instruction, addr, operand)
+    def eor(instruction, addr, value)
       raise "TODO"
     end
 
     # Increment
-    def inc(instruction, addr, operand)
+    def inc(instruction, addr, value)
       raise "TODO"
     end
 
@@ -220,7 +221,7 @@ module C64
     # implied     E8       2
     #
     # Flags: N, Z
-    def inx(instruction, addr, operand)
+    def inx(instruction, addr, value)
       cycle { @x += 1 }
       update_number_flags(@x)
     end
@@ -232,7 +233,7 @@ module C64
     # implied     C8       2
     #
     # Flags: N, Z
-    def iny(instruction, addr, operand)
+    def iny(instruction, addr, value)
       cycle { @y += 1 }
       update_number_flags(@y)
     end
@@ -245,12 +246,12 @@ module C64
     # indirect    6C       5
     #
     # Flags: none
-    def jmp(instruction, addr, operand)
+    def jmp(instruction, addr, value)
       @program_counter = addr
     end
 
     # Jump subroutine
-    def jsr(instruction, addr, operand)
+    def jsr(instruction, addr, value)
       raise "TODO"
     end
 
@@ -273,20 +274,40 @@ module C64
       update_number_flags(@a)
     end
 
-    # Load X
+    # Load X.
+    #
+    # Addressing  Opcode   Cycles
+    # ---------------------------
+    # immediate   A2       2
+    # zeropage    A6       3
+    # zeropage_y  B6       4
+    # absolute    AE       4
+    # absolute_y  BE       4/5
+    #
+    # Flags: N, Z
     def ldx(instruction, addr, value)
       @x = value.call
       update_number_flags(@x)
     end
 
-    # Load Y
+    # Load Y.
+    #
+    # Addressing  Opcode   Cycles
+    # ---------------------------
+    # immediate   A0       2
+    # zeropage    A4       3
+    # zeropage_x  B4       4
+    # absolute    AC       4
+    # absolute_x  BC       4/5
+    #
+    # Flags: N, Z
     def ldy(instruction, addr, value)
       @y = value.call
       update_number_flags(@y)
     end
 
     # Logical shift right
-    def lsr(instruction, addr, operand)
+    def lsr(instruction, addr, value)
       raise "TODO"
     end
 
@@ -297,12 +318,12 @@ module C64
     # absolute    EA       2
     #
     # Flags: none
-    def nop(instruction, addr, operand)
+    def nop(instruction, addr, value)
       cycle { nil }
     end
 
     # Or with accumulator
-    def ora(instruction, addr, operand)
+    def ora(instruction, addr, value)
       raise "TODO"
     end
 
@@ -313,92 +334,93 @@ module C64
     # implied     48       3
     #
     # Flags: None
-    def pha(instruction, addr, operand)
-      raise "TODO"
+    def pha(instruction, addr, value)
+      stack_push(@a)
     end
 
     # Push processor status (SR)
-    def php(instruction, addr, operand)
-      raise "TODO"
+    def php(instruction, addr, value)
+      stack_push(p)
     end
 
     # Pull accumulator
-    def pla(instruction, addr, operand)
-      raise "TODO"
+    def pla(instruction, addr, value)
+      cycle { @a = stack_pull }
+      update_number_flags(@a)
     end
 
     # Pull processor status (SR)
-    def plp(instruction, addr, operand)
-      raise "TODO"
+    def plp(instruction, addr, value)
+      cycle { status.value = stack_pull }
     end
 
     # Rotate left
-    def rol(instruction, addr, operand)
+    def rol(instruction, addr, value)
       raise "TODO"
     end
 
     # Rotate right
-    def ror(instruction, addr, operand)
+    def ror(instruction, addr, value)
       raise "TODO"
     end
 
     # Return from interrupt
-    def rti(instruction, addr, operand)
+    def rti(instruction, addr, value)
       raise "TODO"
     end
 
     # Return from subroutine
-    def rts(instruction, addr, operand)
+    def rts(instruction, addr, value)
       raise "TODO"
     end
 
     # Subtract with carry
-    def sbc(instruction, addr, operand)
+    def sbc(instruction, addr, value)
       raise "TODO"
     end
 
     # Set carry
-    def sec(instruction, addr, operand)
+    def sec(instruction, addr, value)
       raise "TODO"
     end
 
     # Set decimal
-    def sed(instruction, addr, operand)
+    def sed(instruction, addr, value)
       raise "TODO"
     end
 
     # Set interrupt disable
-    def sei(instruction, addr, operand)
+    def sei(instruction, addr, value)
       raise "TODO"
     end
 
     # Store accumulator
-    def sta(instruction, addr, operand)
+    def sta(instruction, addr, value)
       raise "TODO"
     end
 
     # Store X
-    def stx(instruction, addr, operand)
+    def stx(instruction, addr, value)
       raise "TODO"
     end
 
     # Store Y
-    def sty(instruction, addr, operand)
+    def sty(instruction, addr, value)
       raise "TODO"
     end
 
     # Transfer accumulator to X
-    def tax(instruction, addr, operand)
+    def tax(instruction, addr, value)
       raise "TODO"
     end
 
     # Transfer accumulator to Y
-    def tay(instruction, addr, operand)
+    def tay(instruction, addr, value)
       raise "TODO"
     end
 
     # Transfer stack pointer to X
-    def tsx(instruction, addr, operand)
+    def tsx(instruction, addr, value)
       raise "TODO"
     end
 
@@ -422,6 +444,20 @@ module C64
     def branch(addr)
       cycle {} if addr.high != @program_counter.high
       cycle { @program_counter = addr }
+    end
+
+    def stack_address
+      Uint16.new(stack_pointer, 0x01)
+    end
+
+    def stack_pull
+      cycle { @stack_pointer += 1 }
+      read_byte(stack_address)
+    end
+
+    def stack_push(value)
+      cycle { memory[stack_address] = value }
+      cycle { @stack_pointer -= 1 }
     end
 
     def update_number_flags(value)

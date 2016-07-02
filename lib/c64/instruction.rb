@@ -25,7 +25,7 @@ module C64
           0x24 => Instruction.new(:bit, :zeropage),
           0x25 => Instruction.new(:and, :zeropage),
           0x26 => Instruction.new(:rol, :zeropage),
-          0x28 => Instruction.new(:php, :implied),
+          0x28 => Instruction.new(:plp, :implied),
           0x29 => Instruction.new(:and, :immediate),
           0x2a => Instruction.new(:rol, :accumulator),
           0x2c => Instruction.new(:bit, :absolute),

@@ -1,6 +1,6 @@
 module C64
   class Status
-    attr_reader :value
+    attr_accessor :value
 
     def initialize(value = 0x0)
       @value = value
