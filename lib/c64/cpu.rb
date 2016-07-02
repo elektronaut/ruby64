@@ -1,5 +1,6 @@
 module C64
   class CPU
+    class InvalidOpcodeError < StandardError; end
     include InstructionSet
 
     attr_reader :memory
@@ -14,7 +15,7 @@ module C64
       @program_counter = @memory.peek_16(0xfffc)
       # Stack pointer starts at 0x01ff and grows down
       @stack_pointer = Uint8.new(0xff)
-      @status = Status.new(0x00)
+      @status = Status.new(0b00100000)
       @a = Uint8.new(0x0)
       @x = Uint8.new(0x0)
       @y = Uint8.new(0x0)
@@ -61,7 +62,6 @@ module C64
     end
 
     def read_instruction
-      @program_counter += 1
       Instruction.find(memory[@program_counter])
     end
 
@@ -80,8 +80,10 @@ module C64
 
     def read_address(instruction, operand)
       case instruction.addressing_mode
-      when :implied, :immediate, :accumulator
+      when :implied, :immediate
         nil
+      when :accumulator
+        :accumulator
       when :relative
         @program_counter + operand.signed
       when :zeropage
@@ -138,7 +140,9 @@ module C64
     end
 
     def main_loop
+      @program_counter += 1
       @instruction = read_instruction
+      raise InvalidOpcodeError unless @instruction
       @cycles += 1
 
       operand = read_operand(@instruction)

@@ -1,17 +1,51 @@
 require "spec_helper"
 
 describe C64::CPU do
-  let(:addr) { 0xc000 }
+  let(:start_addr) { C64::Uint16.new(0xc000) }
   let(:memory) do
     C64::Memory.new.tap do |m|
-      m.poke(0xfffc, C64::Uint16.new(addr - 1))
+      m.poke(0xfffc, start_addr - 1)
     end
   end
   let(:cpu) { C64::CPU.new(memory) }
 
   def execute(bytes, steps = 1)
-    memory.write(addr, bytes)
+    memory.write(start_addr, bytes)
     steps.times { cpu.step! }
+  end
+
+  describe "ADC" do
+    it "should add the values" do
+      cpu.a = 0x01
+      execute([0x69, 0x01])
+      expect(cpu.a).to eq(0x02)
+      expect(cpu.status.carry?).to eq(false)
+      expect(cpu.status.overflow?).to eq(false)
+      expect(cpu.cycles).to eq(2)
+    end
+
+    it "should include the carry bit" do
+      cpu.a = 0x01
+      cpu.status.carry = true
+      execute([0x69, 0x01])
+      expect(cpu.a).to eq(0x03)
+      expect(cpu.status.carry?).to eq(false)
+      expect(cpu.status.overflow?).to eq(false)
+    end
+
+    it "should set the carry bit rolling over" do
+      cpu.a = 0xff
+      execute([0x69, 0x01])
+      expect(cpu.a).to eq(0x00)
+      expect(cpu.status.carry?).to eq(true)
+      expect(cpu.status.overflow?).to eq(false)
+    end
+
+    it "should set the overflow bit" do
+      cpu.a = -128
+      execute([0x69, -1])
+      expect(cpu.status.overflow?).to eq(true)
+    end
   end
 
   describe "AND" do
@@ -22,6 +56,32 @@ describe C64::CPU do
     it "should do a bitwise AND on the accumulator" do
       expect(cpu.a).to eq(0b00001010)
       expect(cpu.cycles).to eq(2)
+    end
+  end
+
+  describe "ASL" do
+    context "with accumulator addressing" do
+      before do
+        cpu.a = 0b11111111
+        execute([0x0a])
+      end
+      it "should rotate the accumulator" do
+        expect(cpu.a).to eq(0b11111110)
+        expect(cpu.status.carry?).to eq(true)
+        expect(cpu.cycles).to eq(2)
+      end
+    end
+
+    context "with carry bit" do
+      before do
+        cpu.status.carry = 1
+        cpu.a = 0b01010101
+        execute([0x0a])
+      end
+      it "should rotate the accumulator" do
+        expect(cpu.a).to eq(0b10101010)
+        expect(cpu.status.carry?).to eq(false)
+      end
     end
   end
 
@@ -119,6 +179,35 @@ describe C64::CPU do
     end
   end
 
+  describe "BIT" do
+    context "zeropage addressing" do
+      before do
+        memory.poke(0x20, 0b11000000)
+        execute([0x24, 0x20])
+      end
+      it "should set the bits" do
+        expect(cpu.status.negative?).to eq(true)
+        expect(cpu.status.overflow?).to eq(true)
+        expect(cpu.status.zero?).to eq(true)
+        expect(cpu.cycles).to eq(3)
+      end
+    end
+
+    context "absolute addressing" do
+      before do
+        cpu.a = 1
+        memory.poke(0x2010, 0b00000001)
+        execute([0x2c, 0x10, 0x20])
+      end
+      it "should set the bits" do
+        expect(cpu.status.negative?).to eq(false)
+        expect(cpu.status.overflow?).to eq(false)
+        expect(cpu.status.zero?).to eq(false)
+        expect(cpu.cycles).to eq(4)
+      end
+    end
+  end
+
   describe "BMI" do
     let(:negative) { true }
     let(:offset) { 0x20 }
@@ -209,6 +298,18 @@ describe C64::CPU do
       it "should spend an extra cycle" do
         expect(cpu.cycles).to eq(4)
       end
+    end
+  end
+
+  describe "BRK" do
+    before do
+      execute([0x00])
+    end
+    it "should set the break flag" do
+      expect(cpu.status.break?).to eq(true)
+    end
+    it "should take 7 cycles" do
+      expect(cpu.cycles).to eq(7)
     end
   end
 
@@ -483,6 +584,19 @@ describe C64::CPU do
     end
   end
 
+  describe "JSR" do
+    before { execute([0x20, 0x10, 0x20]) }
+    it "should jump to the subroutine" do
+      expect(cpu.program_counter).to eq(0x2010)
+      expect(cpu.cycles).to eq(6)
+    end
+
+    it "should store the address on the stack" do
+      expect(memory.peek_16(0x01fe)).to eq(0xc002)
+      expect(cpu.stack_pointer).to eq(0xfd)
+    end
+  end
+
   describe "LDA" do
     context "immediate addressing" do
       before { execute([0xa9, 0x40]) }
@@ -618,6 +732,32 @@ describe C64::CPU do
     end
   end
 
+  describe "LSR" do
+    context "with accumulator addressing" do
+      before do
+        cpu.a = 0b11111110
+        execute([0x4a])
+      end
+      it "should rotate the accumulator" do
+        expect(cpu.a).to eq(0b01111111)
+        expect(cpu.status.carry?).to eq(false)
+        expect(cpu.cycles).to eq(2)
+      end
+    end
+
+    context "with carry bit" do
+      before do
+        cpu.status.carry = 1
+        cpu.a = 0b01010101
+        execute([0x4a])
+      end
+      it "should rotate the accumulator" do
+        expect(cpu.a).to eq(0b00101010)
+        expect(cpu.status.carry?).to eq(true)
+      end
+    end
+  end
+
   describe "NOP" do
     before { execute([0xea]) }
     it "should spend 2 cycles" do
@@ -683,6 +823,182 @@ describe C64::CPU do
       expect(cpu.p).to eq(0b10101010)
       expect(cpu.stack_pointer).to eq(0xff)
       expect(cpu.cycles).to eq(4)
+    end
+  end
+
+  describe "ROL" do
+    context "with accumulator addressing" do
+      before do
+        cpu.a = 0b11111111
+        execute([0x2a])
+      end
+      it "should rotate the accumulator" do
+        expect(cpu.a).to eq(0b11111110)
+        expect(cpu.status.carry?).to eq(true)
+        expect(cpu.cycles).to eq(2)
+      end
+    end
+
+    context "with carry bit" do
+      before do
+        cpu.status.carry = 1
+        cpu.a = 0b10101010
+        execute([0x2a])
+      end
+      it "should rotate the accumulator" do
+        expect(cpu.a).to eq(0b01010101)
+        expect(cpu.status.carry?).to eq(true)
+      end
+    end
+
+    context "with zeropage addressing" do
+      before do
+        memory.poke(0x20, 0b11111111)
+        execute([0x26, 0x20])
+      end
+      it "should rotate the memory location" do
+        expect(memory.peek(0x20)).to eq(0b11111110)
+        expect(cpu.status.carry?).to eq(true)
+        expect(cpu.cycles).to eq(5)
+      end
+    end
+
+    context "with absolute addressing" do
+      before do
+        memory.poke(0x2010, 0b01111111)
+        execute([0x2e, 0x10, 0x20])
+      end
+      it "should rotate the memory location" do
+        expect(memory.peek(0x2010)).to eq(0b11111110)
+        expect(cpu.status.carry?).to eq(false)
+        expect(cpu.cycles).to eq(6)
+      end
+    end
+
+    context "with absolute_x addressing" do
+      before do
+        cpu.x = 2
+        memory.poke(0x2012, 0b01111111)
+        execute([0x3e, 0x10, 0x20])
+      end
+      it "should rotate the memory location" do
+        expect(memory.peek(0x2012)).to eq(0b11111110)
+        expect(cpu.status.carry?).to eq(false)
+        expect(cpu.cycles).to eq(7)
+      end
+    end
+  end
+
+  describe "ROR" do
+    context "with accumulator addressing" do
+      before do
+        cpu.a = 0b11111110
+        execute([0x6a])
+      end
+      it "should rotate the accumulator" do
+        expect(cpu.a).to eq(0b01111111)
+        expect(cpu.status.carry?).to eq(false)
+        expect(cpu.cycles).to eq(2)
+      end
+    end
+
+    context "with carry bit" do
+      before do
+        cpu.status.carry = 1
+        cpu.a = 0b01010101
+        execute([0x6a])
+      end
+      it "should rotate the accumulator" do
+        expect(cpu.a).to eq(0b10101010)
+        expect(cpu.status.carry?).to eq(true)
+      end
+    end
+  end
+
+  describe "RTI" do
+    before do
+      memory.write(0x01fd, [0x40, 0x12, 0x20])
+      cpu.stack_pointer = 0xfc
+      execute([0x40])
+    end
+
+    it "should return from the interrupt" do
+      expect(cpu.p).to eq(0x40)
+      expect(cpu.program_counter).to eq(0x2012)
+      expect(cpu.stack_pointer).to eq(0xff)
+      expect(cpu.cycles).to eq(6)
+    end
+  end
+
+  describe "RTS" do
+    before do
+      memory.write(0x01fe, [0x12, 0x20])
+      cpu.stack_pointer = 0xfd
+      execute([0x60])
+    end
+
+    it "should return from the subroutine" do
+      expect(cpu.program_counter).to eq(0x2013)
+      expect(cpu.stack_pointer).to eq(0xff)
+      expect(cpu.cycles).to eq(6)
+    end
+  end
+
+  describe "SBC" do
+    it "should add the values" do
+      cpu.a = 0x05
+      execute([0xe9, 0x01])
+      expect(cpu.a).to eq(0x04)
+      expect(cpu.status.carry?).to eq(true)
+      expect(cpu.status.overflow?).to eq(false)
+      expect(cpu.cycles).to eq(2)
+    end
+
+    it "should include the carry bit" do
+      cpu.a = 0x05
+      cpu.status.carry = true
+      execute([0xe9, 0x01])
+      expect(cpu.a).to eq(0x03)
+      expect(cpu.status.carry?).to eq(true)
+      expect(cpu.status.overflow?).to eq(false)
+    end
+
+    it "should set the carry bit rolling over" do
+      cpu.a = 0x0
+      execute([0xe9, 0x01])
+      expect(cpu.a).to eq(0xff)
+      expect(cpu.status.carry?).to eq(false)
+      expect(cpu.status.overflow?).to eq(false)
+    end
+
+    it "should set the overflow bit" do
+      cpu.a = -128
+      execute([0xe9, 1])
+      expect(cpu.status.overflow?).to eq(true)
+    end
+  end
+
+  describe "SEC" do
+    before { execute([0x38]) }
+    it "should set the flag" do
+      expect(cpu.status.carry?).to eq(true)
+      expect(cpu.cycles).to eq(2)
+    end
+  end
+
+  describe "SED" do
+    before { execute([0xf8]) }
+    it "should set the flag" do
+      expect(cpu.status.decimal?).to eq(true)
+      expect(cpu.cycles).to eq(2)
+    end
+  end
+
+  describe "SEI" do
+    before { execute([0x78]) }
+    it "should set the flag" do
+      expect(cpu.status.interrupt?).to eq(true)
+      expect(cpu.cycles).to eq(2)
     end
   end
 

@@ -26,8 +26,8 @@ module C64
 
     def peek_16(addr)
       Uint16.new(
-        @memory[index(addr)],
-        @memory[index(addr + 1)]
+        peek(addr),
+        peek(addr + 1)
       )
     end
 

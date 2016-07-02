@@ -6,6 +6,10 @@ module C64
       @value = value
     end
 
+    def carry
+      carry? ? 1 : 0
+    end
+
     def carry?
       @value & masks[:carry] != 0
     end
@@ -75,7 +79,7 @@ module C64
     end
 
     def update(mask, enabled)
-      if enabled
+      if enabled && enabled != 0
         @value = @value | mask
       else
         @value = @value & ~mask

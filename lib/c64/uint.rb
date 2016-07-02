@@ -21,7 +21,12 @@ module C64
     end
 
     def <=>(other)
-      value <=> convert(other)
+      case other
+      when Uint, Numeric
+        value <=> convert(other)
+      else
+        value <=> other
+      end
     end
 
     def inspect
