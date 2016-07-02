@@ -10,7 +10,14 @@ module C64
     end
 
     def coerce(other)
-      [self.class.new(other), self]
+      case other
+      when self.class
+        [other, self]
+      when Numeric
+        [self.class.new(other), self.to_i]
+      else
+        raise TypeError, "#{self.class} can't be coerced into #{other.class}"
+      end
     end
 
     def <=>(other)
@@ -21,9 +28,11 @@ module C64
       "#{self.class.name}(0x%0#{bytes.length * 2}x)" % value
     end
 
-    def to_i
+    def to_int
       value
     end
+
+    alias to_i to_int
 
     def +(other)
       new(value + other)

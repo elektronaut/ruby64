@@ -64,6 +64,13 @@ describe C64::Uint8 do
     expect(int(8).to_i).to be_a(Fixnum)
   end
 
+  it "coerces properly" do
+    expect(5 + int(8)).to eq(13)
+    expect(5 + int(8)).to be_a(C64::Uint8)
+    expect(int(5) + int(8)).to eq(13)
+    expect(int(5) + int(8)).to be_a(C64::Uint8)
+  end
+
   it "can be inspected" do
     expect(int(10).inspect).to eq("C64::Uint8(0x0a)")
   end
