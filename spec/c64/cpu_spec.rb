@@ -318,6 +318,85 @@ describe C64::CPU do
     end
   end
 
+  describe "CMP" do
+    before do
+      cpu.a = 0x60
+      execute([0xc9, 0x40])
+    end
+    it "should set the flags" do
+      expect(cpu.status.carry?).to eq(true)
+      expect(cpu.cycles).to eq(2)
+    end
+  end
+
+  describe "CPX" do
+    before do
+      cpu.x = 0x60
+      execute([0xe0, 0x40])
+    end
+    it "should set the flags" do
+      expect(cpu.status.carry?).to eq(true)
+      expect(cpu.cycles).to eq(2)
+    end
+  end
+
+  describe "CPY" do
+    before do
+      cpu.y = 0x60
+      execute([0xc0, 0x40])
+    end
+    it "should set the flags" do
+      expect(cpu.status.carry?).to eq(true)
+      expect(cpu.cycles).to eq(2)
+    end
+  end
+
+  describe "DEC" do
+    before { memory.poke(target_addr, 0x40) }
+
+    describe "zeropage addressing" do
+      let(:target_addr) { 0x20 }
+      before { execute([0xc6, target_addr]) }
+      it "should decrement the value" do
+        expect(memory.peek(target_addr)).to eq(0x3f)
+        expect(cpu.cycles).to eq(5)
+      end
+    end
+
+    describe "zeropage_x addressing" do
+      let(:target_addr) { 0x22 }
+      before do
+        cpu.x = 2
+        execute([0xd6, 0x20])
+      end
+      it "should decrement the value" do
+        expect(memory.peek(target_addr)).to eq(0x3f)
+        expect(cpu.cycles).to eq(6)
+      end
+    end
+
+    describe "absolute addressing" do
+      let(:target_addr) { 0x2010 }
+      before { execute([0xce, 0x10, 0x20]) }
+      it "should decrement the value" do
+        expect(memory.peek(target_addr)).to eq(0x3f)
+        expect(cpu.cycles).to eq(6)
+      end
+    end
+
+    describe "absolute_x addressing" do
+      let(:target_addr) { 0x2012 }
+      before do
+        cpu.x = 2
+        execute([0xde, 0x10, 0x20])
+      end
+      it "should decrement the value" do
+        expect(memory.peek(target_addr)).to eq(0x3f)
+        expect(cpu.cycles).to eq(7)
+      end
+    end
+  end
+
   describe "DEX" do
     before { execute([0xca]) }
     it "should decrement x by 1" do
@@ -331,6 +410,28 @@ describe C64::CPU do
     it "should decrement y by 1" do
       expect(cpu.y).to eq(255)
       expect(cpu.cycles).to eq(2)
+    end
+  end
+
+  describe "EOR" do
+    before do
+      cpu.a = 0b00001111
+      execute([0x49, 0b10101010])
+    end
+    it "should do a bitwise AND on the accumulator" do
+      expect(cpu.a).to eq(0b10100101)
+      expect(cpu.cycles).to eq(2)
+    end
+  end
+
+  describe "INC" do
+    before do
+      memory.poke(0x20, 0x40)
+      execute([0xe6, 0x20])
+    end
+    it "should increment the value" do
+      expect(memory.peek(0x20)).to eq(0x41)
+      expect(cpu.cycles).to eq(5)
     end
   end
 
@@ -524,6 +625,17 @@ describe C64::CPU do
     end
   end
 
+  describe "ORA" do
+    before do
+      cpu.a = 0b00001111
+      execute([0x09, 0b10101010])
+    end
+    it "should do a bitwise AND on the accumulator" do
+      expect(cpu.a).to eq(0b10101111)
+      expect(cpu.cycles).to eq(2)
+    end
+  end
+
   describe "PHA" do
     before do
       cpu.a = 0x40
@@ -571,6 +683,104 @@ describe C64::CPU do
       expect(cpu.p).to eq(0b10101010)
       expect(cpu.stack_pointer).to eq(0xff)
       expect(cpu.cycles).to eq(4)
+    end
+  end
+
+  describe "STA" do
+    before do
+      cpu.a = 0x40
+      execute([0x8d, 0x10, 0x20])
+    end
+    it "should store the accumulator" do
+      expect(memory.peek(0x2010)).to eq(0x40)
+      expect(cpu.cycles).to eq(4)
+    end
+  end
+
+  describe "STX" do
+    before do
+      cpu.x = 0x40
+      execute([0x8e, 0x10, 0x20])
+    end
+    it "should store the X register" do
+      expect(memory.peek(0x2010)).to eq(0x40)
+      expect(cpu.cycles).to eq(4)
+    end
+  end
+
+  describe "STY" do
+    before do
+      cpu.y = 0x40
+      execute([0x8c, 0x10, 0x20])
+    end
+    it "should store the Y register" do
+      expect(memory.peek(0x2010)).to eq(0x40)
+      expect(cpu.cycles).to eq(4)
+    end
+  end
+
+  describe "TAX" do
+    before do
+      cpu.a = 0x40
+      execute([0xaa])
+    end
+    it "should transfer the accumulator" do
+      expect(cpu.x).to eq(0x40)
+      expect(cpu.cycles).to eq(2)
+    end
+  end
+
+  describe "TAY" do
+    before do
+      cpu.a = 0x40
+      execute([0xa8])
+    end
+    it "should transfer the accumulator" do
+      expect(cpu.y).to eq(0x40)
+      expect(cpu.cycles).to eq(2)
+    end
+  end
+
+  describe "TSX" do
+    before do
+      execute([0xba])
+    end
+    it "should transfer the stack pointer" do
+      expect(cpu.x).to eq(0xff)
+      expect(cpu.cycles).to eq(2)
+    end
+  end
+
+  describe "TXA" do
+    before do
+      cpu.x = 0x40
+      execute([0x8a])
+    end
+    it "should transfer X to the accumulator" do
+      expect(cpu.a).to eq(0x40)
+      expect(cpu.cycles).to eq(2)
+    end
+  end
+
+  describe "TXS" do
+    before do
+      cpu.x = 0x40
+      execute([0x9a])
+    end
+    it "should transfer X to the accumulator" do
+      expect(cpu.stack_pointer).to eq(0x40)
+      expect(cpu.cycles).to eq(2)
+    end
+  end
+
+  describe "TYA" do
+    before do
+      cpu.y = 0x40
+      execute([0x98])
+    end
+    it "should transfer X to the accumulator" do
+      expect(cpu.a).to eq(0x40)
+      expect(cpu.cycles).to eq(2)
     end
   end
 end

@@ -162,22 +162,31 @@ module C64
 
     # Compare (with accumulator)
     def cmp(instruction, addr, value)
-      raise "TODO"
+      v = value.call
+      status.carry = @a >= v
+      update_number_flags(@a - v)
     end
 
     # Compare with X
     def cpx(instruction, addr, value)
-      raise "TODO"
+      v = value.call
+      status.carry = @x >= v
+      update_number_flags(@x - v)
     end
 
     # Compare with Y
     def cpy(instruction, addr, value)
-      raise "TODO"
+      v = value.call
+      status.carry = @y >= v
+      update_number_flags(@y - v)
     end
 
     # Decrement
     def dec(instruction, addr, value)
-      raise "TODO"
+      cycle {} if instruction.addressing_mode == :absolute_x
+      v = cycle { value.call - 1 }
+      write_byte(addr, v)
+      update_number_flags(v)
     end
 
     # Decrement X
@@ -206,12 +215,16 @@ module C64
 
     # Exclusive or (with accumulator)
     def eor(instruction, addr, value)
-      raise "TODO"
+      @a ^= value.call
+      update_number_flags(@a)
     end
 
     # Increment
     def inc(instruction, addr, value)
-      raise "TODO"
+      cycle {} if instruction.addressing_mode == :absolute_x
+      v = cycle { value.call + 1 }
+      write_byte(addr, v)
+      update_number_flags(v)
     end
 
     # Increment X.
@@ -324,7 +337,8 @@ module C64
 
     # Or with accumulator
     def ora(instruction, addr, value)
-      raise "TODO"
+      @a |= value.call
+      update_number_flags(@a)
     end
 
     # Push accumulator.
@@ -396,47 +410,53 @@ module C64
 
     # Store accumulator
     def sta(instruction, addr, value)
-      raise "TODO"
+      write_byte(addr, @a)
     end
 
     # Store X
     def stx(instruction, addr, value)
-      raise "TODO"
+      write_byte(addr, @x)
     end
 
     # Store Y
     def sty(instruction, addr, value)
-      raise "TODO"
+      write_byte(addr, @y)
     end
 
     # Transfer accumulator to X
     def tax(instruction, addr, value)
-      raise "TODO"
+      cycle { @x = a }
+      update_number_flags(@x)
     end
 
     # Transfer accumulator to Y
     def tay(instruction, addr, value)
-      raise "TODO"
+      cycle { @y = a }
+      update_number_flags(@y)
     end
 
     # Transfer stack pointer to X
     def tsx(instruction, addr, value)
-      raise "TODO"
+      cycle { @x = stack_pointer }
+      update_number_flags(@x)
     end
 
     # Transfer X to accumulator
     def txa(instruction, addr, operand)
-      raise "TODO"
+      cycle { @a = x }
+      update_number_flags(@a)
     end
 
     # Transfer X to stack pointer
     def txs(instruction, addr, operand)
-      raise "TODO"
+      cycle { @stack_pointer = x }
+      update_number_flags(@stack_pointer)
     end
 
     # Transfer Y to accumulator
     def tya(instruction, addr, operand)
-      raise "TODO"
+      cycle { @a = y }
+      update_number_flags(@a)
     end
 
     private
@@ -463,6 +483,10 @@ module C64
     def update_number_flags(value)
       status.zero = (value == 0)
       status.negative = (value >> 7 == 1)
+    end
+
+    def write_byte(addr, value)
+      cycle { memory[addr] = value }
     end
   end
 end
