@@ -3,8 +3,8 @@ module C64
     include InstructionSet
 
     attr_reader :memory
-    attr_reader :program_counter, :stack_pointer
-    attr_reader :status, :a, :x, :y
+    attr_accessor :program_counter, :stack_pointer
+    attr_accessor :status, :a, :x, :y
 
     attr_reader :cycles, :instructions
 
@@ -57,7 +57,7 @@ module C64
     end
 
     def read_word(addr)
-      Uint16.new(read_byte(addr).to_i, read_byte(addr + 1).to_i)
+      Uint16.new(read_byte(addr), read_byte(addr.to_i + 1))
     end
 
     def read_instruction
@@ -87,33 +87,53 @@ module C64
       when :zeropage
         operand
       when :zeropage_x
-        operand + x
+        cycle { operand + @x }
       when :zeropage_y
-        operand + y
+        cycle { operand + @y }
       when :absolute
         operand
       when :absolute_x
-        # TODO: Handle page boundary
-        operand + x
+        # Do an extra cycle if page boundary is crossed
+        cycle {} if (operand + @x).high != operand.high
+        operand + @x
       when :absolute_y
-        # TODO: Handle page boundary
-        operand + y
+        # Do an extra cycle if page boundary is crossed
+        cycle {} if (operand + @x).high != operand.high
+        operand + @y
       when :indirect
         # This is only used for JMP. There's no carry associated, so an
         # indirect jump to $30FF will wrap around on the same page and read
         # from [0x30ff, 0x3000].
         Uint16.new(
-          read_byte(operand),
           read_byte(Uint16.new(
-            operand.high,
-            (operand.low + 1) # Wrap around low byte
-          ))
+            (operand.low + 1), # Wrap around low byte
+            operand.high
+          )),
+          read_byte(operand)
         )
       when :indirect_x
-        read_word(operand + x)
+        cycle {}
+        Uint16.new(
+          read_byte(operand + @x),
+          read_byte(operand + @x + 1) # Wrap around low byte
+        )
       when :indirect_y
-        # TODO: Handle page boundary
-        read_word(operand + y)
+        # Do an extra cycle if page boundary is crossed
+        cycle {} if operand == 0xff
+        read_word(operand) + y
+      end
+    end
+
+    def realize_value(instruction, operand, address)
+      case instruction.addressing_mode
+      when :implied
+        raise "Implied value can't be realized"
+      when :accumulator
+        @a
+      when :immediate
+        operand
+      else
+        read_byte(address)
       end
     end
 
@@ -127,7 +147,12 @@ module C64
       @program_counter += @instruction.operand_length
 
       # Run instruction and update processor status
-      self.send(@instruction.name, @instruction, address, operand)
+      self.send(
+        @instruction.name,
+        @instruction,
+        address,
+        -> { realize_value(@instruction, operand, address) }
+      )
 
       @instructions += 1
       @instruction = nil

@@ -109,15 +109,15 @@ module C64
     end
   end
 
-  # 16 bit integer, unsigned
+  # 16 bit integer, unsigned, little endian
   class Uint16 < Uint
-    def initialize(value_or_high, low = nil)
-      return super(value_or_high) unless low
-      @value = convert((value_or_high.to_i << 8) + low.to_i)
+    def initialize(value_or_low, high = nil)
+      return super(value_or_low) unless high
+      @value = convert((high.to_i << 8) + value_or_low.to_i)
     end
 
     def bytes
-      [high, low]
+      [low, high]
     end
 
     def high

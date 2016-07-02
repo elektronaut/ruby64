@@ -69,11 +69,11 @@ describe C64::Uint16 do
   end
 
   it "can be constructed from two bytes" do
-    expect(C64::Uint16.new(0x05, 0x39)).to eq(0x0539)
+    expect(C64::Uint16.new(0x39, 0x05)).to eq(0x0539)
   end
 
   it "exposes bytes" do
-    expect(int(1337).bytes).to eq([0x05, 0x39])
+    expect(int(1337).bytes).to eq([0x39, 0x05])
   end
 
   it "exposes the high byte" do

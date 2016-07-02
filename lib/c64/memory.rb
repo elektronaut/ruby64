@@ -33,8 +33,8 @@ module C64
 
     def poke(addr, value)
       if value.is_a?(Uint16)
-        @memory[index(addr)] = value.high.to_i
-        @memory[index(addr + 1)] = value.low.to_i
+        @memory[index(addr)] = value.low.to_i
+        @memory[index(addr + 1)] = value.high.to_i
       else
         @memory[index(addr)] = value.to_i
       end

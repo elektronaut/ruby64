@@ -115,24 +115,48 @@ module C64
       branch(addr) if status.overflow?
     end
 
-    # Clear carry
+    # Clear carry.
+    #
+    # Addressing  Opcode   Cycles
+    # ---------------------------
+    # implied     18       2
+    #
+    # Flags: C
     def clc(instruction, addr, operand)
-      raise "TODO"
+      cycle { status.carry = false }
     end
 
-    # Clear decimal
+    # Clear decimal.
+    #
+    # Addressing  Opcode   Cycles
+    # ---------------------------
+    # implied     D8       2
+    #
+    # Flags: D
     def cld(instruction, addr, operand)
-      raise "TODO"
+      cycle { status.decimal = false }
     end
 
     # Clear interrupt disable
+    #
+    # Addressing  Opcode   Cycles
+    # ---------------------------
+    # implied     58       2
+    #
+    # Flags: I
     def cli(instruction, addr, operand)
-      raise "TODO"
+      cycle { status.interrupt = false }
     end
 
     # Clear overflow
+    #
+    # Addressing  Opcode   Cycles
+    # ---------------------------
+    # implied     B8       2
+    #
+    # Flags: V
     def clv(instruction, addr, operand)
-      raise "TODO"
+      cycle { status.overflow = false }
     end
 
     # Compare (with accumulator)
@@ -156,13 +180,27 @@ module C64
     end
 
     # Decrement X
+    #
+    # Addressing  Opcode   Cycles
+    # ---------------------------
+    # implied     CA       2
+    #
+    # Flags: V
     def dex(instruction, addr, operand)
-      raise "TODO"
+      cycle { @x -= 1 }
+      update_number_flags(@x)
     end
 
     # Decrement Y
+    #
+    # Addressing  Opcode   Cycles
+    # ---------------------------
+    # implied     88       2
+    #
+    # Flags: V
     def dey(instruction, addr, operand)
-      raise "TODO"
+      cycle { @y -= 1 }
+      update_number_flags(@y)
     end
 
     # Exclusive or (with accumulator)
@@ -216,19 +254,35 @@ module C64
       raise "TODO"
     end
 
-    # Load accumulator
-    def lda(instruction, addr, operand)
-      raise "TODO"
+    # Load accumulator.
+    #
+    # Addressing  Opcode   Cycles
+    # ---------------------------
+    # immediate   A9       2
+    # zeropage    A5       3
+    # zeropage_x  B5       4
+    # absolute    AD       4
+    # absolute_x  BD       4/5
+    # absolute_y  B9       4/5
+    # indirect_x  A1       6
+    # indirect_y  B1       5/6
+    #
+    # Flags: N, Z
+    def lda(instruction, addr, value)
+      @a = value.call
+      update_number_flags(@a)
     end
 
     # Load X
-    def ldy(instruction, addr, operand)
-      raise "TODO"
+    def ldx(instruction, addr, value)
+      @x = value.call
+      update_number_flags(@x)
     end
 
     # Load Y
-    def ldy(instruction, addr, operand)
-      raise "TODO"
+    def ldy(instruction, addr, value)
+      @y = value.call
+      update_number_flags(@y)
     end
 
     # Logical shift right
@@ -252,7 +306,13 @@ module C64
       raise "TODO"
     end
 
-    # Push accumulator
+    # Push accumulator.
+    #
+    # Addressing  Opcode   Cycles
+    # ---------------------------
+    # implied     48       3
+    #
+    # Flags: None
     def pha(instruction, addr, operand)
       raise "TODO"
     end

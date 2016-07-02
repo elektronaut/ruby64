@@ -81,8 +81,8 @@ describe C64::Memory do
     context "with a 16 bit value" do
       before { memory.poke(0x100, C64::Uint16.new(0x0539)) }
       it "should store the value" do
-        expect(memory.peek(0x100)).to eq(0x05)
-        expect(memory.peek(0x101)).to eq(0x39)
+        expect(memory.peek(0x100)).to eq(0x39)
+        expect(memory.peek(0x101)).to eq(0x05)
       end
     end
   end
