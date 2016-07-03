@@ -282,7 +282,7 @@ module C64
         @program_counter = Uint16.new(
           stack_pull,
           stack_pull
-        ) + 1
+        )
       end
     end
 

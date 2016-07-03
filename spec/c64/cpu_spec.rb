@@ -952,7 +952,7 @@ describe C64::CPU do
     end
 
     it "should return from the subroutine" do
-      expect(cpu.program_counter).to eq(0x2013)
+      expect(cpu.program_counter).to eq(0x2012)
       expect(cpu.stack_pointer).to eq(0xff)
       expect(cpu.cycles).to eq(6)
     end
