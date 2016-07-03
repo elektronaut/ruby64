@@ -2,7 +2,7 @@ module C64
   class Instruction < Struct.new(:name, :addressing_mode)
     class << self
       def map
-        {
+        @map ||= {
           0x00 => Instruction.new(:brk, :implied),
           0x01 => Instruction.new(:ora, :indirect_x),
           0x05 => Instruction.new(:ora, :zeropage),
