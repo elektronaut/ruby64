@@ -44,7 +44,8 @@ module C64
     private
 
     def overlays
-      [
+      @overlays ||= {}
+      @overlays[mode] ||= [
         basic?     ? @basic     : nil,
         character? ? @character : nil,
         kernal?    ? @kernal    : nil
