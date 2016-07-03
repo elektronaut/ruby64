@@ -9,7 +9,8 @@ module C64
 
     attr_reader :cycles, :instructions
 
-    def initialize(memory = nil)
+    def initialize(memory = nil, debug: false)
+      @debug = debug
       @memory = memory || MemoryMap.new
       # The program counter is initialized from 0xfffc
       @program_counter = @memory.peek_16(0xfffc)
@@ -68,9 +69,9 @@ module C64
     def read_operand(instruction)
       return [] unless instruction.operand?
       if instruction.operand_length == 2
-        read_word(@program_counter + 1)
+        read_word(@program_counter)
       else
-        read_byte(@program_counter + 1)
+        read_byte(@program_counter)
       end
     end
 
@@ -140,15 +141,17 @@ module C64
     end
 
     def main_loop
-      @program_counter += 1
       @instruction = read_instruction
       raise InvalidOpcodeError unless @instruction
+      @program_counter += 1
       @cycles += 1
 
       operand = read_operand(@instruction)
       address = read_address(@instruction, operand)
 
       @program_counter += @instruction.operand_length
+
+      puts "#{@instruction.name.upcase} #{@instruction.addressing_mode} #{operand.inspect}" if @debug
 
       # Run instruction and update processor status
       self.send(

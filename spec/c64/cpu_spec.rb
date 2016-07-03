@@ -4,7 +4,7 @@ describe C64::CPU do
   let(:start_addr) { C64::Uint16.new(0xc000) }
   let(:memory) do
     C64::Memory.new.tap do |m|
-      m.poke(0xfffc, start_addr - 1)
+      m.poke(0xfffc, start_addr)
     end
   end
   let(:cpu) { C64::CPU.new(memory) }
@@ -96,14 +96,14 @@ describe C64::CPU do
     context "when flag is set" do
       let(:carry) { true }
       it "should not branch" do
-        expect(cpu.program_counter).to eq(0xc001)
+        expect(cpu.program_counter).to eq(0xc002)
         expect(cpu.cycles).to eq(2)
       end
     end
 
     context "when flag is clear" do
       it "should branch" do
-        expect(cpu.program_counter).to eq(0xc020)
+        expect(cpu.program_counter).to eq(0xc021)
         expect(cpu.cycles).to eq(3)
       end
     end
@@ -111,7 +111,7 @@ describe C64::CPU do
     context "branching across page boundary" do
       let(:offset) { C64::Uint8.new(-100) }
       it "should spend an extra cycle" do
-        expect(cpu.program_counter).to eq(0xbf9c)
+        expect(cpu.program_counter).to eq(0xbf9d)
         expect(cpu.cycles).to eq(4)
       end
     end
@@ -128,14 +128,14 @@ describe C64::CPU do
     context "when flag is clear" do
       let(:carry) { false }
       it "should not branch" do
-        expect(cpu.program_counter).to eq(0xc001)
+        expect(cpu.program_counter).to eq(0xc002)
         expect(cpu.cycles).to eq(2)
       end
     end
 
     context "when flag is set" do
       it "should branch" do
-        expect(cpu.program_counter).to eq(0xc020)
+        expect(cpu.program_counter).to eq(0xc021)
         expect(cpu.cycles).to eq(3)
       end
     end
@@ -159,14 +159,14 @@ describe C64::CPU do
     context "when flag is clear" do
       let(:zero) { false }
       it "should not branch" do
-        expect(cpu.program_counter).to eq(0xc001)
+        expect(cpu.program_counter).to eq(0xc002)
         expect(cpu.cycles).to eq(2)
       end
     end
 
     context "when flag is set" do
       it "should branch" do
-        expect(cpu.program_counter).to eq(0xc020)
+        expect(cpu.program_counter).to eq(0xc021)
         expect(cpu.cycles).to eq(3)
       end
     end
@@ -219,14 +219,14 @@ describe C64::CPU do
     context "when negative is clear" do
       let(:negative) { false }
       it "should not branch" do
-        expect(cpu.program_counter).to eq(0xc001)
+        expect(cpu.program_counter).to eq(0xc002)
         expect(cpu.cycles).to eq(2)
       end
     end
 
     context "when negative is set" do
       it "should branch" do
-        expect(cpu.program_counter).to eq(0xc020)
+        expect(cpu.program_counter).to eq(0xc021)
         expect(cpu.cycles).to eq(3)
       end
     end
@@ -250,14 +250,14 @@ describe C64::CPU do
     context "when flag is set" do
       let(:zero) { true }
       it "should not branch" do
-        expect(cpu.program_counter).to eq(0xc001)
+        expect(cpu.program_counter).to eq(0xc002)
         expect(cpu.cycles).to eq(2)
       end
     end
 
     context "when flag is clear" do
       it "should branch" do
-        expect(cpu.program_counter).to eq(0xc020)
+        expect(cpu.program_counter).to eq(0xc021)
         expect(cpu.cycles).to eq(3)
       end
     end
@@ -281,14 +281,14 @@ describe C64::CPU do
     context "when flag is set" do
       let(:negative) { true }
       it "should not branch" do
-        expect(cpu.program_counter).to eq(0xc001)
+        expect(cpu.program_counter).to eq(0xc002)
         expect(cpu.cycles).to eq(2)
       end
     end
 
     context "when flag is clear" do
       it "should branch" do
-        expect(cpu.program_counter).to eq(0xc020)
+        expect(cpu.program_counter).to eq(0xc021)
         expect(cpu.cycles).to eq(3)
       end
     end
@@ -324,14 +324,14 @@ describe C64::CPU do
     context "when flag is set" do
       let(:overflow) { true }
       it "should not branch" do
-        expect(cpu.program_counter).to eq(0xc001)
+        expect(cpu.program_counter).to eq(0xc002)
         expect(cpu.cycles).to eq(2)
       end
     end
 
     context "when flag is clear" do
       it "should branch" do
-        expect(cpu.program_counter).to eq(0xc020)
+        expect(cpu.program_counter).to eq(0xc021)
         expect(cpu.cycles).to eq(3)
       end
     end
@@ -355,14 +355,14 @@ describe C64::CPU do
     context "when flag is clear" do
       let(:overflow) { false }
       it "should not branch" do
-        expect(cpu.program_counter).to eq(0xc001)
+        expect(cpu.program_counter).to eq(0xc002)
         expect(cpu.cycles).to eq(2)
       end
     end
 
     context "when flag is set" do
       it "should branch" do
-        expect(cpu.program_counter).to eq(0xc020)
+        expect(cpu.program_counter).to eq(0xc021)
         expect(cpu.cycles).to eq(3)
       end
     end
@@ -592,7 +592,7 @@ describe C64::CPU do
     end
 
     it "should store the address on the stack" do
-      expect(memory.peek_16(0x01fe)).to eq(0xc002)
+      expect(memory.peek_16(0x01fe)).to eq(0xc003)
       expect(cpu.stack_pointer).to eq(0xfd)
     end
   end
