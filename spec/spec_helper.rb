@@ -1,1 +1,1 @@
-require "c64"
+require "ruby64"

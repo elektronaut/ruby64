@@ -1,4 +1,4 @@
-module C64
+module Ruby64
   class Memory
     class OutOfBoundsError < StandardError; end
     class ReadOnlyMemoryError < StandardError; end

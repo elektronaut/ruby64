@@ -1,8 +1,8 @@
 require "spec_helper"
 
-describe C64::Uint8 do
+describe Ruby64::Uint8 do
   def int(value)
-    C64::Uint8.new(value)
+    Ruby64::Uint8.new(value)
   end
 
   it "is comparable to a Fixnum" do
@@ -66,13 +66,13 @@ describe C64::Uint8 do
 
   it "coerces properly" do
     expect(5 + int(8)).to eq(13)
-    expect(5 + int(8)).to be_a(C64::Uint8)
+    expect(5 + int(8)).to be_a(Ruby64::Uint8)
     expect(int(5) + int(8)).to eq(13)
-    expect(int(5) + int(8)).to be_a(C64::Uint8)
+    expect(int(5) + int(8)).to be_a(Ruby64::Uint8)
   end
 
   it "can be inspected" do
-    expect(int(10).inspect).to eq("C64::Uint8(0x0a)")
+    expect(int(10).inspect).to eq("Ruby64::Uint8(0x0a)")
   end
 
   it "exposes bytes" do

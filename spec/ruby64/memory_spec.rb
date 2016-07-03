@@ -1,7 +1,7 @@
 require "spec_helper"
 
-describe C64::Memory do
-  let(:memory) { C64::Memory.new }
+describe Ruby64::Memory do
+  let(:memory) { Ruby64::Memory.new }
 
   it "should have a length" do
     expect(memory.length).to eq(65_536)
@@ -12,7 +12,7 @@ describe C64::Memory do
   end
 
   it "can be read as an array" do
-    memory = C64::Memory.new([1, 2, 3])
+    memory = Ruby64::Memory.new([1, 2, 3])
     expect(memory[2]).to eq(3)
   end
 
@@ -22,7 +22,7 @@ describe C64::Memory do
   end
 
   context "with initial state" do
-    let(:memory) { C64::Memory.new([0xff, 0x07]) }
+    let(:memory) { Ruby64::Memory.new([0xff, 0x07]) }
 
     it "should keep the state" do
       expect(memory.peek(0)).to eq(0xff)
@@ -31,7 +31,7 @@ describe C64::Memory do
   end
 
   context "with a start location" do
-    let(:memory) { C64::Memory.new([0xff, 0x07], start: 0x100, length: 2**8) }
+    let(:memory) { Ruby64::Memory.new([0xff, 0x07], start: 0x100, length: 2**8) }
 
     it "should have a range" do
       expect(memory.range).to eq(0x100..0x1ff)
@@ -42,12 +42,12 @@ describe C64::Memory do
     end
 
     it "should raise an error on out of bounds" do
-      expect { memory[0x80] }.to raise_error(C64::Memory::OutOfBoundsError)
+      expect { memory[0x80] }.to raise_error(Ruby64::Memory::OutOfBoundsError)
     end
   end
 
   describe "#in_range?" do
-    let(:memory) { C64::Memory.new(start: 0x100, length: 2**8) }
+    let(:memory) { Ruby64::Memory.new(start: 0x100, length: 2**8) }
 
     it "should return true if address is in range" do
       expect(memory.in_range?(0x1ff)).to eq(true)
@@ -59,14 +59,14 @@ describe C64::Memory do
   end
 
   describe "#peek_16" do
-    before { memory.poke(0x100, C64::Uint16.new(1337)) }
+    before { memory.poke(0x100, Ruby64::Uint16.new(1337)) }
 
     it "should read a 16 bit value" do
       expect(memory.peek_16(0x100)).to eq(1337)
     end
 
     it "should return a Uint16" do
-      expect(memory.peek_16(0x100)).to be_a(C64::Uint16)
+      expect(memory.peek_16(0x100)).to be_a(Ruby64::Uint16)
     end
   end
 
@@ -79,7 +79,7 @@ describe C64::Memory do
     end
 
     context "with a 16 bit value" do
-      before { memory.poke(0x100, C64::Uint16.new(0x0539)) }
+      before { memory.poke(0x100, Ruby64::Uint16.new(0x0539)) }
       it "should store the value" do
         expect(memory.peek(0x100)).to eq(0x39)
         expect(memory.peek(0x101)).to eq(0x05)

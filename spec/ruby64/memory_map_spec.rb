@@ -1,7 +1,7 @@
 require "spec_helper"
 
-describe C64::MemoryMap do
-  let(:memory_map) { C64::MemoryMap.new }
+describe Ruby64::MemoryMap do
+  let(:memory_map) { Ruby64::MemoryMap.new }
 
   it "should initialize with 0xff and 0x07 as the first bytes" do
     expect(memory_map[0x0000]).to eq(0xff)

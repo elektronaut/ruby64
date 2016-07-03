@@ -1,4 +1,4 @@
-module C64
+module Ruby64
   class CPU
     class InvalidOpcodeError < StandardError; end
     include InstructionSet

@@ -1,13 +1,13 @@
 require "spec_helper"
 
-describe C64::CPU do
-  let(:start_addr) { C64::Uint16.new(0xc000) }
+describe Ruby64::CPU do
+  let(:start_addr) { Ruby64::Uint16.new(0xc000) }
   let(:memory) do
-    C64::Memory.new.tap do |m|
+    Ruby64::Memory.new.tap do |m|
       m.poke(0xfffc, start_addr)
     end
   end
-  let(:cpu) { C64::CPU.new(memory) }
+  let(:cpu) { Ruby64::CPU.new(memory) }
 
   def execute(bytes, steps = 1)
     memory.write(start_addr, bytes)
@@ -109,7 +109,7 @@ describe C64::CPU do
     end
 
     context "branching across page boundary" do
-      let(:offset) { C64::Uint8.new(-100) }
+      let(:offset) { Ruby64::Uint8.new(-100) }
       it "should spend an extra cycle" do
         expect(cpu.program_counter).to eq(0xbf9e)
         expect(cpu.cycles).to eq(4)
@@ -141,7 +141,7 @@ describe C64::CPU do
     end
 
     context "branching across page boundary" do
-      let(:offset) { C64::Uint8.new(-100) }
+      let(:offset) { Ruby64::Uint8.new(-100) }
       it "should spend an extra cycle" do
         expect(cpu.cycles).to eq(4)
       end
@@ -172,7 +172,7 @@ describe C64::CPU do
     end
 
     context "branching across page boundary" do
-      let(:offset) { C64::Uint8.new(-100) }
+      let(:offset) { Ruby64::Uint8.new(-100) }
       it "should spend an extra cycle" do
         expect(cpu.cycles).to eq(4)
       end
@@ -232,7 +232,7 @@ describe C64::CPU do
     end
 
     context "branching across page boundary" do
-      let(:offset) { C64::Uint8.new(-100) }
+      let(:offset) { Ruby64::Uint8.new(-100) }
       it "should spend an extra cycle" do
         expect(cpu.cycles).to eq(4)
       end
@@ -263,7 +263,7 @@ describe C64::CPU do
     end
 
     context "branching across page boundary" do
-      let(:offset) { C64::Uint8.new(-100) }
+      let(:offset) { Ruby64::Uint8.new(-100) }
       it "should spend an extra cycle" do
         expect(cpu.cycles).to eq(4)
       end
@@ -294,7 +294,7 @@ describe C64::CPU do
     end
 
     context "branching across page boundary" do
-      let(:offset) { C64::Uint8.new(-100) }
+      let(:offset) { Ruby64::Uint8.new(-100) }
       it "should spend an extra cycle" do
         expect(cpu.cycles).to eq(4)
       end
@@ -337,7 +337,7 @@ describe C64::CPU do
     end
 
     context "branching across page boundary" do
-      let(:offset) { C64::Uint8.new(-100) }
+      let(:offset) { Ruby64::Uint8.new(-100) }
       it "should spend an extra cycle" do
         expect(cpu.cycles).to eq(4)
       end
@@ -368,7 +368,7 @@ describe C64::CPU do
     end
 
     context "branching across page boundary" do
-      let(:offset) { C64::Uint8.new(-100) }
+      let(:offset) { Ruby64::Uint8.new(-100) }
       it "should spend an extra cycle" do
         expect(cpu.cycles).to eq(4)
       end

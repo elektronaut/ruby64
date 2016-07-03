@@ -1,11 +1,11 @@
 require "spec_helper"
 
-describe C64::ROM do
-  let(:memory) { C64::ROM.new }
-  let(:basic) { C64::ROM.load("basic.rom", 0xa000) }
+describe Ruby64::ROM do
+  let(:memory) { Ruby64::ROM.new }
+  let(:basic) { Ruby64::ROM.load("basic.rom", 0xa000) }
 
   it "should raise an error on write" do
-    expect { memory[15] = 20 }.to raise_error(C64::Memory::ReadOnlyMemoryError)
+    expect { memory[15] = 20 }.to raise_error(Ruby64::Memory::ReadOnlyMemoryError)
   end
 
   describe ".load" do

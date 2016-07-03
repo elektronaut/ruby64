@@ -1,8 +1,8 @@
 require "spec_helper"
 
-describe C64::Uint16 do
+describe Ruby64::Uint16 do
   def int(value)
-    C64::Uint16.new(value)
+    Ruby64::Uint16.new(value)
   end
 
   it "is comparable to a Fixnum" do
@@ -17,7 +17,7 @@ describe C64::Uint16 do
   end
 
   it "can be added with a Uint18" do
-    expect(int(0x2000) + C64::Uint8.new(0x10)).to eq(0x2010)
+    expect(int(0x2000) + Ruby64::Uint8.new(0x10)).to eq(0x2010)
   end
 
   it "overflows when added" do
@@ -69,11 +69,11 @@ describe C64::Uint16 do
   end
 
   it "can be inspected" do
-    expect(int(10).inspect).to eq("C64::Uint16(0x000a)")
+    expect(int(10).inspect).to eq("Ruby64::Uint16(0x000a)")
   end
 
   it "can be constructed from two bytes" do
-    expect(C64::Uint16.new(0x39, 0x05)).to eq(0x0539)
+    expect(Ruby64::Uint16.new(0x39, 0x05)).to eq(0x0539)
   end
 
   it "exposes bytes" do
@@ -82,12 +82,12 @@ describe C64::Uint16 do
 
   it "exposes the high byte" do
     expect(int(1337).high).to eq(5)
-    expect(int(1337).high).to be_a(C64::Uint8)
+    expect(int(1337).high).to be_a(Ruby64::Uint8)
   end
 
   it "exposes the low byte" do
     expect(int(1337).low).to eq(57)
-    expect(int(1337).low).to be_a(C64::Uint8)
+    expect(int(1337).low).to be_a(Ruby64::Uint8)
   end
 
   it "exposes bits through the array accessor" do

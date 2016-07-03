@@ -2,9 +2,9 @@
 
 $:.unshift(File.join(File.dirname(__FILE__), "lib"))
 
-require "c64"
+require "ruby64"
 require "ruby-prof"
-cpu = C64::CPU.new
+cpu = Ruby64::CPU.new
 
 iterations = 100_000
 

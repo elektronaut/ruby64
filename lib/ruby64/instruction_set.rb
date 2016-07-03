@@ -1,4 +1,4 @@
-module C64
+module Ruby64
   # http://www.6502.org/tutorials/6502opcodes.html
   # http://www.e-tradition.net/bytes/6502/6502_instruction_set.html
   module InstructionSet

@@ -1,4 +1,4 @@
-module C64
+module Ruby64
   class ROM < Memory
     class << self
       def load(filename, start = 0x0)

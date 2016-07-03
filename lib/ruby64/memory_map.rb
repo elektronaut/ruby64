@@ -1,4 +1,4 @@
-module C64
+module Ruby64
   # Memory layout:
   #
   # 0x0000-0x00FF - Page 0       - Zeropage

@@ -1,4 +1,4 @@
-module C64
+module Ruby64
   class Instruction < Struct.new(:name, :addressing_mode)
     class << self
       def map

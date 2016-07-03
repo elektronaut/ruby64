@@ -1,4 +1,4 @@
-module C64
+module Ruby64
   # Abstract unsigned integer
   class Uint
     include Comparable
