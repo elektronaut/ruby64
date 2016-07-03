@@ -16,6 +16,10 @@ describe C64::Uint16 do
     expect(int(8) + 4).to eq(12)
   end
 
+  it "can be added with a Uint18" do
+    expect(int(0x2000) + C64::Uint8.new(0x10)).to eq(0x2010)
+  end
+
   it "overflows when added" do
     expect(int(8) + 65535).to eq(7)
   end

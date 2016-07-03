@@ -59,7 +59,10 @@ module C64
     end
 
     def read_word(addr)
-      Uint16.new(read_byte(addr), read_byte(addr.to_i + 1))
+      Uint16.new(
+        read_byte(addr),
+        read_byte(addr.to_i + 1)
+      )
     end
 
     def read_instruction
@@ -86,7 +89,7 @@ module C64
       when :accumulator
         :accumulator
       when :relative
-        @program_counter + operand.signed
+        @program_counter + operand.signed + 1
       when :zeropage
         operand
       when :zeropage_x
@@ -101,7 +104,7 @@ module C64
         operand + @x
       when :absolute_y
         # Do an extra cycle if page boundary is crossed
-        cycle {} if (operand + @x).high != operand.high
+        cycle {} if (operand + @y).high != operand.high
         operand + @y
       when :indirect
         # This is only used for JMP. There's no carry associated, so an
@@ -140,6 +143,16 @@ module C64
       end
     end
 
+    def log(instruction, operand, address)
+      return unless @debug
+      pc = (@program_counter - 1) - instruction.operand_length
+      puts(
+        "PC: #{pc.inspect} - " \
+          "#{@instruction.name.upcase} #{@instruction.addressing_mode} " \
+          "Operand: #{operand.inspect} Address: #{address.inspect}"
+      )
+    end
+
     def main_loop
       @instruction = read_instruction
       raise InvalidOpcodeError unless @instruction
@@ -148,10 +161,9 @@ module C64
 
       operand = read_operand(@instruction)
       address = read_address(@instruction, operand)
-
       @program_counter += @instruction.operand_length
 
-      puts "#{@instruction.name.upcase} #{@instruction.addressing_mode} #{operand.inspect}" if @debug
+      log(@instruction, operand, address)
 
       # Run instruction and update processor status
       self.send(

@@ -103,7 +103,7 @@ describe C64::CPU do
 
     context "when flag is clear" do
       it "should branch" do
-        expect(cpu.program_counter).to eq(0xc021)
+        expect(cpu.program_counter).to eq(0xc022)
         expect(cpu.cycles).to eq(3)
       end
     end
@@ -111,7 +111,7 @@ describe C64::CPU do
     context "branching across page boundary" do
       let(:offset) { C64::Uint8.new(-100) }
       it "should spend an extra cycle" do
-        expect(cpu.program_counter).to eq(0xbf9d)
+        expect(cpu.program_counter).to eq(0xbf9e)
         expect(cpu.cycles).to eq(4)
       end
     end
@@ -135,7 +135,7 @@ describe C64::CPU do
 
     context "when flag is set" do
       it "should branch" do
-        expect(cpu.program_counter).to eq(0xc021)
+        expect(cpu.program_counter).to eq(0xc022)
         expect(cpu.cycles).to eq(3)
       end
     end
@@ -166,7 +166,7 @@ describe C64::CPU do
 
     context "when flag is set" do
       it "should branch" do
-        expect(cpu.program_counter).to eq(0xc021)
+        expect(cpu.program_counter).to eq(0xc022)
         expect(cpu.cycles).to eq(3)
       end
     end
@@ -226,7 +226,7 @@ describe C64::CPU do
 
     context "when negative is set" do
       it "should branch" do
-        expect(cpu.program_counter).to eq(0xc021)
+        expect(cpu.program_counter).to eq(0xc022)
         expect(cpu.cycles).to eq(3)
       end
     end
@@ -257,7 +257,7 @@ describe C64::CPU do
 
     context "when flag is clear" do
       it "should branch" do
-        expect(cpu.program_counter).to eq(0xc021)
+        expect(cpu.program_counter).to eq(0xc022)
         expect(cpu.cycles).to eq(3)
       end
     end
@@ -288,7 +288,7 @@ describe C64::CPU do
 
     context "when flag is clear" do
       it "should branch" do
-        expect(cpu.program_counter).to eq(0xc021)
+        expect(cpu.program_counter).to eq(0xc022)
         expect(cpu.cycles).to eq(3)
       end
     end
@@ -331,7 +331,7 @@ describe C64::CPU do
 
     context "when flag is clear" do
       it "should branch" do
-        expect(cpu.program_counter).to eq(0xc021)
+        expect(cpu.program_counter).to eq(0xc022)
         expect(cpu.cycles).to eq(3)
       end
     end
@@ -362,7 +362,7 @@ describe C64::CPU do
 
     context "when flag is set" do
       it "should branch" do
-        expect(cpu.program_counter).to eq(0xc021)
+        expect(cpu.program_counter).to eq(0xc022)
         expect(cpu.cycles).to eq(3)
       end
     end
@@ -766,13 +766,27 @@ describe C64::CPU do
   end
 
   describe "ORA" do
-    before do
-      cpu.a = 0b00001111
-      execute([0x09, 0b10101010])
+    context "immediate addressing" do
+      before do
+        cpu.a = 0b00001111
+        execute([0x09, 0b10101010])
+      end
+      it "should do a bitwise AND on the accumulator" do
+        expect(cpu.a).to eq(0b10101111)
+        expect(cpu.cycles).to eq(2)
+      end
     end
-    it "should do a bitwise AND on the accumulator" do
-      expect(cpu.a).to eq(0b10101111)
-      expect(cpu.cycles).to eq(2)
+
+    context "zeropage addressing" do
+      before do
+        memory.poke(0xbd, 0b10101010)
+        cpu.a = 0b00001111
+        execute([0x05, 0xbd])
+      end
+      it "should do a bitwise AND on the accumulator" do
+        expect(cpu.a).to eq(0b10101111)
+        expect(cpu.cycles).to eq(3)
+      end
     end
   end
 

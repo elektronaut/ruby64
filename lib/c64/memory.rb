@@ -16,7 +16,7 @@ module C64
     end
 
     def in_range?(addr)
-      range.include?(addr)
+      range.include?(addr.to_i)
     end
 
     def peek(addr)
@@ -53,7 +53,7 @@ module C64
     private
 
     def index(addr)
-      raise OutOfBoundsError unless in_range?(addr.to_i)
+      raise OutOfBoundsError, "#{addr.inspect} (#{self.range})" unless in_range?(addr.to_i)
       addr.to_i - start
     end
 

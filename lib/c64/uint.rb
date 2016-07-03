@@ -40,39 +40,39 @@ module C64
     alias to_i to_int
 
     def +(other)
-      new(value + other)
+      new(value + convert(other))
     end
 
     def -(other)
-      new(value - other)
+      new(value - convert(other))
     end
 
     def *(other)
-      new(value * other)
+      new(value * convert(other))
     end
 
     def /(other)
-      new(value / other)
+      new(value / convert(other))
     end
 
     def <<(other)
-      new(value << other)
+      new(value << convert(other))
     end
 
     def >>(other)
-      new(value >> other)
+      new(value >> convert(other))
     end
 
     def &(other)
-      new(value & other)
+      new(value & convert(other))
     end
 
     def |(other)
-      new(value | other)
+      new(value | convert(other))
     end
 
     def ^(other)
-      new(value ^ other)
+      new(value ^ convert(other))
     end
 
     def ~

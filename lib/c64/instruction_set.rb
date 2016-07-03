@@ -109,7 +109,7 @@ module C64
     # Compare (with accumulator)
     def cmp(instruction, addr, value)
       v = value.call
-      status.carry = @a >= v
+      status.carry = (@a >= v)
       update_number_flags(@a - v)
     end
 
