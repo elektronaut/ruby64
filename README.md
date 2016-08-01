@@ -1,5 +1,7 @@
 # Ruby64
 
+[![Build Status](https://travis-ci.org/elektronaut/ruby64.svg?branch=master)](https://travis-ci.org/elektronaut/ruby64) [![Code Climate](https://codeclimate.com/github/elektronaut/ruby64/badges/gpa.svg)](https://codeclimate.com/github/elektronaut/ruby64) [![Code Climate](https://codeclimate.com/github/elektronaut/ruby64/badges/coverage.svg)](https://codeclimate.com/github/elektronaut/ruby64)
+
 Ruby64 is a Commodore 64 emulator in written in Ruby. It is cycle accurate,
 utilizing Fibers to emulate cycles.
 
