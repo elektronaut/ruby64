@@ -153,7 +153,7 @@ module Ruby64
           0xf8 => Instruction.new(:sed, :implied),
           0xf9 => Instruction.new(:sbc, :absolute_y),
           0xfd => Instruction.new(:sbc, :absolute_x),
-          0xfe => Instruction.new(:inc, :absolute_3)
+          0xfe => Instruction.new(:inc, :absolute_x)
         }
       end
 
