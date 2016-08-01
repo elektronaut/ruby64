@@ -1,5 +1,13 @@
+# frozen_string_literal: true
 module Ruby64
-  class Instruction < Struct.new(:name, :addressing_mode)
+  class Instruction
+    attr_reader :name, :addressing_mode
+
+    def initialize(name, addressing_mode)
+      @name = name
+      @addressing_mode = addressing_mode
+    end
+
     class << self
       def map
         @map ||= {
@@ -167,7 +175,7 @@ module Ruby64
     end
 
     def operand?
-      operand_length > 0
+      operand_length.positive?
     end
 
     def operand_length

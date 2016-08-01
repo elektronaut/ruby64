@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 module Ruby64
   class ROM < Memory
     class << self
@@ -13,7 +14,7 @@ module Ruby64
       end
     end
 
-    def poke(addr, value)
+    def poke(_addr, _value)
       raise ReadOnlyMemoryError
     end
     alias []= poke

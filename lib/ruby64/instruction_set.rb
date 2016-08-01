@@ -1,23 +1,22 @@
+# frozen_string_literal: true
 module Ruby64
   # http://www.6502.org/tutorials/6502opcodes.html
   # http://www.e-tradition.net/bytes/6502/6502_instruction_set.html
   module InstructionSet
     # Add with carry.
-    def adc(instruction, addr, value)
-      if status.decimal?
-        raise "BCD mode not implemented yet"
-      end
+    def adc(_instruction, _addr, value)
+      raise "BCD mode not implemented yet" if status.decimal?
       v = value.call
       result = a.to_i + v.to_i + status.carry
       signed_result = Uint8.new(a).signed + v.signed + status.carry
       status.carry = result > 0xff
-      status.overflow = !(-128..127).include?(signed_result)
+      status.overflow = !(-128..127).cover?(signed_result)
       @a = Uint8.new(result)
       update_number_flags(@a)
     end
 
     # And (with accumulator)
-    def and(instruction, addr, value)
+    def and(_instruction, _addr, value)
       @a &= value.call
       update_number_flags(@a)
     end
@@ -33,95 +32,95 @@ module Ruby64
     end
 
     # Branch on carry clear
-    def bcc(instruction, addr, value)
-      branch(addr) if !status.carry?
+    def bcc(_instruction, addr, _value)
+      branch(addr) unless status.carry?
     end
 
     # Branch on carry set
-    def bcs(instruction, addr, value)
+    def bcs(_instruction, addr, _value)
       branch(addr) if status.carry?
     end
 
     # Branch on equal (zero set)
-    def beq(instruction, addr, value)
+    def beq(_instruction, addr, _value)
       branch(addr) if status.zero?
     end
 
     # Bit test
-    def bit(instruction, addr, value)
+    def bit(_instruction, _addr, value)
       v = value.call
       status.value = (status.value & 0b00111111) +
                      (v & 0b11000000)
-      status.zero = (Uint8.new(a & v) == 0x00)
+      status.zero = Uint8.new(a & v).zero?
     end
 
     # Branch on minus (negative set)
-    def bmi(instruction, addr, value)
+    def bmi(_instruction, addr, _value)
       branch(addr) if status.negative?
     end
 
     # Branch on not equal (zero clear)
-    def bne(instruction, addr, value)
-      branch(addr) if !status.zero?
+    def bne(_instruction, addr, _value)
+      branch(addr) unless status.zero?
     end
 
     # Branch on plus (negative clear)
-    def bpl(instruction, addr, value)
-      branch(addr) if !status.negative?
+    def bpl(_instruction, addr, _value)
+      branch(addr) unless status.negative?
     end
 
     # Interrupt
-    def brk(instruction, addr, value)
+    def brk(_instruction, _addr, _value)
       6.times { cycle {} }
       status.break = true
     end
 
     # Branch on overflow clear
-    def bvc(instruction, addr, value)
-      branch(addr) if !status.overflow?
+    def bvc(_instruction, addr, _value)
+      branch(addr) unless status.overflow?
     end
 
     # Branch on overflow set
-    def bvs(instruction, addr, value)
+    def bvs(_instruction, addr, _value)
       branch(addr) if status.overflow?
     end
 
     # Clear carry
-    def clc(instruction, addr, value)
+    def clc(_instruction, _addr, _value)
       cycle { status.carry = false }
     end
 
     # Clear decimal
-    def cld(instruction, addr, value)
+    def cld(_instruction, _addr, _value)
       cycle { status.decimal = false }
     end
 
     # Clear interrupt disable
-    def cli(instruction, addr, value)
+    def cli(_instruction, _addr, _value)
       cycle { status.interrupt = false }
     end
 
     # Clear overflow
-    def clv(instruction, addr, value)
+    def clv(_instruction, _addr, _value)
       cycle { status.overflow = false }
     end
 
     # Compare (with accumulator)
-    def cmp(instruction, addr, value)
+    def cmp(_instruction, _addr, value)
       v = value.call
       status.carry = (@a >= v)
       update_number_flags(@a - v)
     end
 
     # Compare with X
-    def cpx(instruction, addr, value)
+    def cpx(_instruction, _addr, value)
       v = value.call
       status.carry = @x >= v
       update_number_flags(@x - v)
     end
 
     # Compare with Y
-    def cpy(instruction, addr, value)
+    def cpy(_instruction, _addr, value)
       v = value.call
       status.carry = @y >= v
       update_number_flags(@y - v)
@@ -136,19 +135,19 @@ module Ruby64
     end
 
     # Decrement X
-    def dex(instruction, addr, value)
+    def dex(_instruction, _addr, _value)
       cycle { @x -= 1 }
       update_number_flags(@x)
     end
 
     # Decrement Y
-    def dey(instruction, addr, value)
+    def dey(_instruction, _addr, _value)
       cycle { @y -= 1 }
       update_number_flags(@y)
     end
 
     # Exclusive or (with accumulator)
-    def eor(instruction, addr, value)
+    def eor(_instruction, _addr, value)
       @a ^= value.call
       update_number_flags(@a)
     end
@@ -162,42 +161,42 @@ module Ruby64
     end
 
     # Increment X
-    def inx(instruction, addr, value)
+    def inx(_instruction, _addr, _value)
       cycle { @x += 1 }
       update_number_flags(@x)
     end
 
     # Increment Y
-    def iny(instruction, addr, value)
+    def iny(_instruction, _addr, _value)
       cycle { @y += 1 }
       update_number_flags(@y)
     end
 
     # Jump to new location
-    def jmp(instruction, addr, value)
+    def jmp(_instruction, addr, _value)
       @program_counter = addr
     end
 
     # Jump subroutine
-    def jsr(instruction, addr, value)
+    def jsr(_instruction, addr, _value)
       stack_push(program_counter)
       @program_counter = addr
     end
 
     # Load accumulator
-    def lda(instruction, addr, value)
+    def lda(_instruction, _addr, value)
       @a = value.call
       update_number_flags(@a)
     end
 
     # Load X
-    def ldx(instruction, addr, value)
+    def ldx(_instruction, _addr, value)
       @x = value.call
       update_number_flags(@x)
     end
 
     # Load Y
-    def ldy(instruction, addr, value)
+    def ldy(_instruction, _addr, value)
       @y = value.call
       update_number_flags(@y)
     end
@@ -213,34 +212,34 @@ module Ruby64
     end
 
     # No operation
-    def nop(instruction, addr, value)
+    def nop(_instruction, _addr, _value)
       cycle { nil }
     end
 
     # Or with accumulator
-    def ora(instruction, addr, value)
+    def ora(_instruction, _addr, value)
       @a |= value.call
       update_number_flags(@a)
     end
 
     # Push accumulator
-    def pha(instruction, addr, value)
+    def pha(_instruction, _addr, _value)
       stack_push(@a)
     end
 
     # Push processor status (SR)
-    def php(instruction, addr, value)
+    def php(_instruction, _addr, _value)
       stack_push(p)
     end
 
     # Pull accumulator
-    def pla(instruction, addr, value)
+    def pla(_instruction, _addr, _value)
       cycle { @a = stack_pull }
       update_number_flags(@a)
     end
 
     # Pull processor status (SR)
-    def plp(instruction, addr, value)
+    def plp(_instruction, _addr, _value)
       cycle { status.value = stack_pull }
     end
 
@@ -265,7 +264,7 @@ module Ruby64
     end
 
     # Return from interrupt
-    def rti(instruction, addr, value)
+    def rti(_instruction, _addr, _value)
       cycle do
         @stack_pointer += 1
         @status.value = memory[stack_address]
@@ -277,7 +276,7 @@ module Ruby64
     end
 
     # Return from subroutine
-    def rts(instruction, addr, value)
+    def rts(_instruction, _addr, _value)
       cycle do
         @program_counter = Uint16.new(
           stack_pull,
@@ -287,81 +286,79 @@ module Ruby64
     end
 
     # Subtract with carry
-    def sbc(instruction, addr, value)
-      if status.decimal?
-        raise "BCD mode not implemented yet"
-      end
+    def sbc(_instruction, _addr, value)
+      raise "BCD mode not implemented yet" if status.decimal?
       v = value.call
       result = a.to_i - v.to_i - status.carry
       signed_result = Uint8.new(a).signed - v.signed - status.carry
-      status.carry = result > 0x0
-      status.overflow = !(-128..127).include?(signed_result)
+      status.carry = result.positive?
+      status.overflow = !(-128..127).cover?(signed_result)
       @a = Uint8.new(result)
       update_number_flags(@a)
     end
 
     # Set carry
-    def sec(instruction, addr, value)
+    def sec(_instruction, _addr, _value)
       cycle { status.carry = true }
     end
 
     # Set decimal
-    def sed(instruction, addr, value)
+    def sed(_instruction, _addr, _value)
       cycle { status.decimal = true }
     end
 
     # Set interrupt disable
-    def sei(instruction, addr, value)
+    def sei(_instruction, _addr, _value)
       cycle { status.interrupt = true }
     end
 
     # Store accumulator
-    def sta(instruction, addr, value)
+    def sta(_instruction, addr, _value)
       write_byte(addr, @a)
     end
 
     # Store X
-    def stx(instruction, addr, value)
+    def stx(_instruction, addr, _value)
       write_byte(addr, @x)
     end
 
     # Store Y
-    def sty(instruction, addr, value)
+    def sty(_instruction, addr, _value)
       write_byte(addr, @y)
     end
 
     # Transfer accumulator to X
-    def tax(instruction, addr, value)
+    def tax(_instruction, _addr, _value)
       cycle { @x = a }
       update_number_flags(@x)
     end
 
     # Transfer accumulator to Y
-    def tay(instruction, addr, value)
+    def tay(_instruction, _addr, _value)
       cycle { @y = a }
       update_number_flags(@y)
     end
 
     # Transfer stack pointer to X
-    def tsx(instruction, addr, value)
+    def tsx(_instruction, _addr, _value)
       cycle { @x = stack_pointer }
       update_number_flags(@x)
     end
 
     # Transfer X to accumulator
-    def txa(instruction, addr, operand)
+    def txa(_instruction, _addr, _operand)
       cycle { @a = x }
       update_number_flags(@a)
     end
 
     # Transfer X to stack pointer
-    def txs(instruction, addr, operand)
+    def txs(_instruction, _addr, _operand)
       cycle { @stack_pointer = x }
       update_number_flags(@stack_pointer)
     end
 
     # Transfer Y to accumulator
-    def tya(instruction, addr, operand)
+    def tya(_instruction, _addr, _operand)
       cycle { @a = y }
       update_number_flags(@a)
     end
@@ -383,7 +380,7 @@ module Ruby64
     end
 
     def stack_push(value)
-      if value.kind_of?(Uint16)
+      if value.is_a?(Uint16)
         write_byte(stack_address, value.high)
         write_byte(stack_address - 1, value.low)
         cycle { @stack_pointer -= 2 }
@@ -394,7 +391,7 @@ module Ruby64
     end
 
     def update_number_flags(value)
-      status.zero = (value == 0)
+      status.zero = value.zero?
       status.negative = (value >> 7 == 1)
     end
 

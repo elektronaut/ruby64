@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 module Ruby64
   class Status
     attr_accessor :value
@@ -11,7 +12,7 @@ module Ruby64
     end
 
     def carry?
-      @value & masks[:carry] != 0
+      !(@value & masks[:carry]).zero?
     end
 
     def carry=(enabled)
@@ -19,7 +20,7 @@ module Ruby64
     end
 
     def zero?
-      @value & masks[:zero] != 0
+      !(@value & masks[:zero]).zero?
     end
 
     def zero=(enabled)
@@ -27,7 +28,7 @@ module Ruby64
     end
 
     def interrupt?
-      @value & masks[:interrupt] != 0
+      !(@value & masks[:interrupt]).zero?
     end
 
     def interrupt=(enabled)
@@ -35,7 +36,7 @@ module Ruby64
     end
 
     def decimal?
-      @value & masks[:decimal] != 0
+      !(@value & masks[:decimal]).zero?
     end
 
     def decimal=(enabled)
@@ -43,7 +44,7 @@ module Ruby64
     end
 
     def break?
-      @value & masks[:break] != 0
+      !(@value & masks[:break]).zero?
     end
 
     def break=(enabled)
@@ -51,7 +52,7 @@ module Ruby64
     end
 
     def overflow?
-      @value & masks[:overflow] != 0
+      !(@value & masks[:overflow]).zero?
     end
 
     def overflow=(enabled)
@@ -59,7 +60,7 @@ module Ruby64
     end
 
     def negative?
-      @value & masks[:negative] != 0
+      !(@value & masks[:negative]).zero?
     end
 
     def negative=(enabled)
@@ -79,11 +80,11 @@ module Ruby64
     end
 
     def update(mask, enabled)
-      if enabled && enabled != 0
-        @value = @value | mask
-      else
-        @value = @value & ~mask
-      end
+      @value = if enabled && enabled != 0
+                 @value | mask
+               else
+                 @value & ~mask
+               end
     end
   end
 end

@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 require "spec_helper"
 
 describe Ruby64::ROM do
@@ -5,7 +6,9 @@ describe Ruby64::ROM do
   let(:basic) { Ruby64::ROM.load("basic.rom", 0xa000) }
 
   it "should raise an error on write" do
-    expect { memory[15] = 20 }.to raise_error(Ruby64::Memory::ReadOnlyMemoryError)
+    expect { memory[15] = 20 }.to(
+      raise_error(Ruby64::Memory::ReadOnlyMemoryError)
+    )
   end
 
   describe ".load" do

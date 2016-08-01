@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 module Ruby64
   # Abstract unsigned integer
   class Uint
@@ -14,7 +15,7 @@ module Ruby64
       when self.class
         [other, self]
       when Numeric
-        [self.class.new(other), self.to_i]
+        [self.class.new(other), to_i]
       else
         raise TypeError, "#{self.class} can't be coerced into #{other.class}"
       end
@@ -30,7 +31,7 @@ module Ruby64
     end
 
     def inspect
-      "#{self.class.name}(0x%0#{bytes.length * 2}x)" % value
+      format("#{self.class.name}(0x%0#{bytes.length * 2}x)", value)
     end
 
     def to_int
@@ -83,9 +84,24 @@ module Ruby64
       value[i]
     end
 
+    def respond_to_missing?(name)
+      value.respond_to_missing?(name) || super
+    end
+
     def method_missing(name, *args)
-      # raise "#{name} called on #{inspect}"
-      new(value.send(name, *args))
+      new(value.send(name, *args)) || super
+    end
+
+    def nonzero?
+      value.nonzero?
+    end
+
+    def positive?
+      value.positive?
+    end
+
+    def zero?
+      value.zero?
     end
 
     private

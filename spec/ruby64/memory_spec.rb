@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 require "spec_helper"
 
 describe Ruby64::Memory do
@@ -31,7 +32,9 @@ describe Ruby64::Memory do
   end
 
   context "with a start location" do
-    let(:memory) { Ruby64::Memory.new([0xff, 0x07], start: 0x100, length: 2**8) }
+    let(:memory) do
+      Ruby64::Memory.new([0xff, 0x07], start: 0x100, length: 2**8)
+    end
 
     it "should have a range" do
       expect(memory.range).to eq(0x100..0x1ff)

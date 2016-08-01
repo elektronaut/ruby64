@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 module Ruby64
   class Memory
     class OutOfBoundsError < StandardError; end
@@ -53,7 +54,9 @@ module Ruby64
     private
 
     def index(addr)
-      raise OutOfBoundsError, "#{addr.inspect} (#{self.range})" unless in_range?(addr.to_i)
+      unless in_range?(addr.to_i)
+        raise OutOfBoundsError, "#{addr.inspect} (#{range})"
+      end
       addr.to_i - start
     end
 

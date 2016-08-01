@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 module Ruby64
   class CPU
     class InvalidOpcodeError < StandardError; end
@@ -21,7 +22,7 @@ module Ruby64
       @x = Uint8.new(0x0)
       @y = Uint8.new(0x0)
 
-      @loop = Fiber.new { main_loop while true }
+      @loop = Fiber.new { loop { main_loop } }
 
       @cycles = 0
       @instructions = 0
@@ -47,7 +48,7 @@ module Ruby64
 
     private
 
-    def cycle(&block)
+    def cycle
       Fiber.yield
       result = yield
       @cycles += 1
@@ -112,8 +113,8 @@ module Ruby64
         # from [0x30ff, 0x3000].
         Uint16.new(
           read_byte(Uint16.new(
-            (operand.low + 1), # Wrap around low byte
-            operand.high
+                      (operand.low + 1), # Wrap around low byte
+                      operand.high
           )),
           read_byte(operand)
         )
@@ -166,7 +167,7 @@ module Ruby64
       log(@instruction, operand, address)
 
       # Run instruction and update processor status
-      self.send(
+      send(
         @instruction.name,
         @instruction,
         address,
