@@ -6,7 +6,7 @@ describe Ruby64::Uint16 do
     Ruby64::Uint16.new(value)
   end
 
-  it "is comparable to a Fixnum" do
+  it "is comparable to an integer" do
     expect(int(8) == 8).to eq(true)
     expect(int(8) == 10).to eq(false)
     expect(int(8) < 20).to eq(true)
@@ -65,8 +65,8 @@ describe Ruby64::Uint16 do
     expect(~int(0b0101010111001100)).to eq(0b1010101000110011)
   end
 
-  it "can be converted to a Fixnum" do
-    expect(int(8).to_i).to be_a(Fixnum)
+  it "can be converted to an integer" do
+    expect(int(8).to_i).to be_a(Integer)
   end
 
   it "can be inspected" do
