@@ -7,7 +7,7 @@ module Ruby64
   # 0x0200-0x02FF - Page 2       - OS/BASIC pointers
   # 0x0300-0x03FF - Page 3       - OS/BASIC pointers
   # 0x0400-0x07FF - Page 4-7     - Screen memory
-  # 0x0800-0x09FF - Page 8-159   - BASIC program storage area
+  # 0x0800-0x9FFF - Page 8-159   - BASIC program storage area
   # 0xA000-0xBFFF - Page 160-191 - Machine code program storage (ROM overlay)
   # 0xC000-0xCFFF - Page 192-207 - Machine code program storage
   # 0xD000-0xD3FF - Page 208-211 - VIC II registers

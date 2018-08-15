@@ -109,10 +109,6 @@ module Ruby64
     def new(value)
       self.class.new(value)
     end
-
-    def convert(value)
-      value.to_i & mask
-    end
   end
 
   # 8 bit integer, unsigned
@@ -127,6 +123,12 @@ module Ruby64
 
     def signed
       value > 127 ? value - 256 : value
+    end
+
+    private
+
+    def convert(value)
+      value.to_i & 0xff
     end
   end
 
@@ -151,6 +153,12 @@ module Ruby64
 
     def mask
       0xffff
+    end
+
+    private
+
+    def convert(value)
+      value.to_i & 0xffff
     end
   end
 end
