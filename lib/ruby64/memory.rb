@@ -17,7 +17,8 @@ module Ruby64
     end
 
     def in_range?(addr)
-      range.include?(addr.to_i)
+      addr_i = addr.to_i
+      addr_i >= start && addr_i < (start + length)
     end
 
     def peek(addr)
