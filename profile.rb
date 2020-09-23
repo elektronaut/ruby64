@@ -9,6 +9,10 @@ cpu = Ruby64::CPU.new
 
 iterations = 100_000
 
+puts "Warming up..."
+
+iterations.times { cpu.cycle! }
+
 puts "Profiling #{iterations} cycles..."
 RubyProf.start
 iterations.times { cpu.cycle! }
