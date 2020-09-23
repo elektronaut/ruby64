@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 module Ruby64
   class Status
     attr_accessor :value
@@ -70,13 +71,13 @@ module Ruby64
     private
 
     def masks
-      { carry:     0b00000001,
-        zero:      0b00000010,
+      { carry: 0b00000001,
+        zero: 0b00000010,
         interrupt: 0b00000100,
-        decimal:   0b00001000,
-        break:     0b00010000,
-        overflow:  0b01000000,
-        negative:  0b10000000 }
+        decimal: 0b00001000,
+        break: 0b00010000,
+        overflow: 0b01000000,
+        negative: 0b10000000 }
     end
 
     def update(mask, enabled)

@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 module Ruby64
   # Memory layout:
   #
@@ -31,6 +32,10 @@ module Ruby64
       @basic     = ROM.load("basic.rom",     0xa000)
       @character = ROM.load("character.rom", 0xd000)
       @kernal    = ROM.load("kernal.rom",    0xe000)
+    end
+
+    def disable_overlays!
+      @memory[1] = 0
     end
 
     def peek(addr)

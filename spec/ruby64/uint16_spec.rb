@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require "spec_helper"
 
 describe Ruby64::Uint16 do
@@ -6,11 +7,11 @@ describe Ruby64::Uint16 do
     Ruby64::Uint16.new(value)
   end
 
-  it "is comparable to an integer" do
-    expect(int(8) == 8).to eq(true)
-    expect(int(8) == 10).to eq(false)
-    expect(int(8) < 20).to eq(true)
-    expect(int(8) < 8).to eq(false)
+  describe "comparing to an integer" do
+    specify { expect(int(8) == 8).to eq(true) }
+    specify { expect(int(8) == 10).to eq(false) }
+    specify { expect(int(8) < 20).to eq(true) }
+    specify { expect(int(8) < 8).to eq(false) }
   end
 
   it "can be added" do
@@ -22,7 +23,7 @@ describe Ruby64::Uint16 do
   end
 
   it "overflows when added" do
-    expect(int(8) + 65535).to eq(7)
+    expect(int(8) + 65_535).to eq(7)
   end
 
   it "can be subtracted" do
@@ -74,25 +75,25 @@ describe Ruby64::Uint16 do
   end
 
   it "can be constructed from two bytes" do
-    expect(Ruby64::Uint16.new(0x39, 0x05)).to eq(0x0539)
+    expect(described_class.new(0x39, 0x05)).to eq(0x0539)
   end
 
   it "exposes bytes" do
     expect(int(1337).bytes).to eq([0x39, 0x05])
   end
 
-  it "exposes the high byte" do
-    expect(int(1337).high).to eq(5)
-    expect(int(1337).high).to be_a(Ruby64::Uint8)
+  describe "accessing the high byte" do
+    specify { expect(int(1337).high).to eq(5) }
+    specify { expect(int(1337).high).to be_a(Ruby64::Uint8) }
   end
 
-  it "exposes the low byte" do
-    expect(int(1337).low).to eq(57)
-    expect(int(1337).low).to be_a(Ruby64::Uint8)
+  describe "accessing the low byte" do
+    specify { expect(int(1337).low).to eq(57) }
+    specify { expect(int(1337).low).to be_a(Ruby64::Uint8) }
   end
 
-  it "exposes bits through the array accessor" do
-    expect(int(0b00000010)[0]).to eq(0)
-    expect(int(0b00000010)[1]).to eq(1)
+  describe "accessing bits through the array accessor" do
+    specify { expect(int(0b00000010)[0]).to eq(0) }
+    specify { expect(int(0b00000010)[1]).to eq(1) }
   end
 end

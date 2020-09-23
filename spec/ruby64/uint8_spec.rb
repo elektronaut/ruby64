@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require "spec_helper"
 
 describe Ruby64::Uint8 do
@@ -6,11 +7,11 @@ describe Ruby64::Uint8 do
     Ruby64::Uint8.new(value)
   end
 
-  it "is comparable to an integer" do
-    expect(int(8) == 8).to eq(true)
-    expect(int(8) == 10).to eq(false)
-    expect(int(8) < 20).to eq(true)
-    expect(int(8) < 8).to eq(false)
+  describe "comparing to an integer" do
+    specify { expect(int(8) == 8).to eq(true) }
+    specify { expect(int(8) == 10).to eq(false) }
+    specify { expect(int(8) < 20).to eq(true) }
+    specify { expect(int(8) < 8).to eq(false) }
   end
 
   it "can be added" do
@@ -65,11 +66,11 @@ describe Ruby64::Uint8 do
     expect(int(8).to_i).to be_a(Integer)
   end
 
-  it "coerces properly" do
-    expect(5 + int(8)).to eq(13)
-    expect(5 + int(8)).to be_a(Ruby64::Uint8)
-    expect(int(5) + int(8)).to eq(13)
-    expect(int(5) + int(8)).to be_a(Ruby64::Uint8)
+  describe "coercion" do
+    specify { expect(5 + int(8)).to eq(13) }
+    specify { expect(5 + int(8)).to be_a(described_class) }
+    specify { expect(int(5) + int(8)).to eq(13) }
+    specify { expect(int(5) + int(8)).to be_a(described_class) }
   end
 
   it "can be inspected" do
@@ -80,14 +81,14 @@ describe Ruby64::Uint8 do
     expect(int(8).bytes).to eq([8])
   end
 
-  it "exposes bits through the array accessor" do
-    expect(int(0b00000010)[0]).to eq(0)
-    expect(int(0b00000010)[1]).to eq(1)
+  describe "accessing bits through the array accessor" do
+    specify { expect(int(0b00000010)[0]).to eq(0) }
+    specify { expect(int(0b00000010)[1]).to eq(1) }
   end
 
-  it "can return a signed number" do
-    expect(int(127).signed).to eq(127)
-    expect(int(128).signed).to eq(-128)
-    expect(int(255).signed).to eq(-1)
+  describe "#signed" do
+    specify { expect(int(127).signed).to eq(127) }
+    specify { expect(int(128).signed).to eq(-128) }
+    specify { expect(int(255).signed).to eq(-1) }
   end
 end

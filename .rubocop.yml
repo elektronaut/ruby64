@@ -1,8 +1,40 @@
-StringLiterals:
-  EnforcedStyle: double_quotes
+require: rubocop-rspec
 
-Style/NumericLiterals:
-  MinDigits: 6
+inherit_from:
+  - .rubocop_todo.yml
+
+AllCops:
+  NewCops: enable
+  TargetRubyVersion: 2.7
+
+Metrics/AbcSize:
+  Exclude:
+    - "lib/ruby64/instruction.rb"
+
+Metrics/BlockLength:
+  Exclude:
+    - "spec/**/*.rb"
+
+Metrics/ClassLength:
+  Exclude:
+    - "lib/ruby64/instruction.rb"
+
+Metrics/MethodLength:
+  Exclude:
+    - "lib/ruby64/instruction.rb"
+
+Style/AsciiComments:
+  Enabled: false
 
 Style/Documentation:
   Enabled: false
+
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+
+Layout/LineLength:
+  AutoCorrect: true
+  Max: 80
+
+Layout/MultilineOperationIndentation:
+  EnforcedStyle: aligned

@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 module Ruby64
   # http://www.6502.org/tutorials/6502opcodes.html
   # http://www.e-tradition.net/bytes/6502/6502_instruction_set.html
@@ -6,6 +7,7 @@ module Ruby64
     # Add with carry.
     def adc(_instruction, _addr, value)
       raise "BCD mode not implemented yet" if status.decimal?
+
       v = value.call
       result = a.to_i + v.to_i + status.carry
       signed_result = Uint8.new(a).signed + v.signed + status.carry
@@ -288,6 +290,7 @@ module Ruby64
     # Subtract with carry
     def sbc(_instruction, _addr, value)
       raise "BCD mode not implemented yet" if status.decimal?
+
       v = value.call
       result = a.to_i - v.to_i - status.carry
       signed_result = Uint8.new(a).signed - v.signed - status.carry

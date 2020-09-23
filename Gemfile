@@ -1,10 +1,13 @@
 # frozen_string_literal: true
+
 source "https://rubygems.org"
 
 group :development, :test do
   gem "benchmark-ips"
-  gem "ruby-prof"
   gem "rspec"
+  gem "rubocop"
+  gem "rubocop-rspec"
+  gem "ruby-prof"
 end
 
 group :test do

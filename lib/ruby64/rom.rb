@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 module Ruby64
   class ROM < Memory
     class << self

@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 module Ruby64
   class Memory
     class OutOfBoundsError < StandardError; end
@@ -58,6 +59,7 @@ module Ruby64
       unless in_range?(addr.to_i)
         raise OutOfBoundsError, "#{addr.inspect} (#{range})"
       end
+
       addr.to_i - start
     end
 

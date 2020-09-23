@@ -1,14 +1,12 @@
 # frozen_string_literal: true
+
 module Ruby64
   class CPU
     class InvalidOpcodeError < StandardError; end
     include InstructionSet
 
-    attr_reader :memory
-    attr_accessor :program_counter, :stack_pointer
-    attr_accessor :status, :a, :x, :y
-
-    attr_reader :cycles, :instructions
+    attr_reader :memory, :cycles, :instructions
+    attr_accessor :program_counter, :stack_pointer, :status, :a, :x, :y
 
     def initialize(memory = nil, debug: false)
       @debug = debug
@@ -72,6 +70,7 @@ module Ruby64
 
     def read_operand(instruction)
       return [] unless instruction.operand?
+
       if instruction.operand_length == 2
         read_word(@program_counter)
       else
@@ -115,7 +114,7 @@ module Ruby64
           read_byte(Uint16.new(
                       (operand.low + 1), # Wrap around low byte
                       operand.high
-          )),
+                    )),
           read_byte(operand)
         )
       when :indirect_x
@@ -146,6 +145,7 @@ module Ruby64
 
     def log(instruction, operand, address)
       return unless @debug
+
       pc = (@program_counter - 1) - instruction.operand_length
       puts(
         "PC: #{pc.inspect} - " \
@@ -157,6 +157,7 @@ module Ruby64
     def main_loop
       @instruction = read_instruction
       raise InvalidOpcodeError unless @instruction
+
       @program_counter += 1
       @cycles += 1
 

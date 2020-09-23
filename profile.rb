@@ -21,4 +21,4 @@ result = RubyProf.stop
 puts "Cycles: #{cpu.cycles}, instructions: #{cpu.instructions}"
 
 printer = RubyProf::FlatPrinter.new(result)
-printer.print(STDOUT, {})
+printer.print($stdout, {})

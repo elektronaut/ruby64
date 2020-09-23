@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 module Ruby64
   # Abstract unsigned integer
   class Uint
@@ -80,8 +81,8 @@ module Ruby64
       new(value ^ mask)
     end
 
-    def [](i)
-      value[i]
+    def [](index)
+      value[index]
     end
 
     def respond_to_missing?(name)
@@ -135,8 +136,7 @@ module Ruby64
   # 16 bit integer, unsigned, little endian
   class Uint16 < Uint
     def initialize(value_or_low, high = nil)
-      return super(value_or_low) unless high
-      @value = convert((high.to_i << 8) + value_or_low.to_i)
+      super(high ? (high.to_i << 8) + value_or_low.to_i : value_or_low)
     end
 
     def bytes

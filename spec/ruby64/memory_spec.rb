@@ -1,19 +1,20 @@
 # frozen_string_literal: true
+
 require "spec_helper"
 
 describe Ruby64::Memory do
-  let(:memory) { Ruby64::Memory.new }
+  let(:memory) { described_class.new }
 
-  it "should have a length" do
+  it "has a length" do
     expect(memory.length).to eq(65_536)
   end
 
-  it "should be zero filled" do
+  it "is zero filled" do
     expect(memory.peek(0xffff)).to eq(0)
   end
 
   it "can be read as an array" do
-    memory = Ruby64::Memory.new([1, 2, 3])
+    memory = described_class.new([1, 2, 3])
     expect(memory[2]).to eq(3)
   end
 
@@ -23,40 +24,40 @@ describe Ruby64::Memory do
   end
 
   context "with initial state" do
-    let(:memory) { Ruby64::Memory.new([0xff, 0x07]) }
+    let(:memory) { described_class.new([0xff, 0x07]) }
+    let(:first_bytes) { [memory.peek(0), memory.peek(1)] }
 
-    it "should keep the state" do
-      expect(memory.peek(0)).to eq(0xff)
-      expect(memory.peek(1)).to eq(0x07)
+    it "keeps the state" do
+      expect(first_bytes).to eq([0xff, 0x07])
     end
   end
 
   context "with a start location" do
     let(:memory) do
-      Ruby64::Memory.new([0xff, 0x07], start: 0x100, length: 2**8)
+      described_class.new([0xff, 0x07], start: 0x100, length: 2**8)
     end
 
-    it "should have a range" do
+    it "has a range" do
       expect(memory.range).to eq(0x100..0x1ff)
     end
 
-    it "should return bytes at the proper address" do
+    it "returns bytes at the proper address" do
       expect(memory[0x101]).to eq(0x07)
     end
 
-    it "should raise an error on out of bounds" do
+    it "raises an error on out of bounds" do
       expect { memory[0x80] }.to raise_error(Ruby64::Memory::OutOfBoundsError)
     end
   end
 
   describe "#in_range?" do
-    let(:memory) { Ruby64::Memory.new(start: 0x100, length: 2**8) }
+    let(:memory) { described_class.new(start: 0x100, length: 2**8) }
 
-    it "should return true if address is in range" do
+    it "returns true if address is in range" do
       expect(memory.in_range?(0x1ff)).to eq(true)
     end
 
-    it "should return false if address is not in range" do
+    it "returns false if address is not in range" do
       expect(memory.in_range?(0xff)).to eq(false)
     end
   end
@@ -64,11 +65,11 @@ describe Ruby64::Memory do
   describe "#peek_16" do
     before { memory.poke(0x100, Ruby64::Uint16.new(1337)) }
 
-    it "should read a 16 bit value" do
+    it "reads a 16 bit value" do
       expect(memory.peek_16(0x100)).to eq(1337)
     end
 
-    it "should return a Uint16" do
+    it "returns a Uint16" do
       expect(memory.peek_16(0x100)).to be_a(Ruby64::Uint16)
     end
   end
@@ -76,23 +77,24 @@ describe Ruby64::Memory do
   describe "#poke" do
     context "with an 8 bit value" do
       before { memory.poke(0x100, 0x80) }
-      it "should store the value" do
+
+      it "stores the value" do
         expect(memory.peek(0x100)).to eq(0x80)
       end
     end
 
     context "with a 16 bit value" do
       before { memory.poke(0x100, Ruby64::Uint16.new(0x0539)) }
-      it "should store the value" do
-        expect(memory.peek(0x100)).to eq(0x39)
-        expect(memory.peek(0x101)).to eq(0x05)
-      end
+
+      specify { expect(memory.peek(0x100)).to eq(0x39) }
+      specify { expect(memory.peek(0x101)).to eq(0x05) }
     end
   end
 
   describe "#write and #read" do
     before { memory.write(0x2000, [0x0a, 0x09, 0x08, 0x07]) }
-    it "should write the bytes" do
+
+    it "writes the bytes" do
       expect(memory.read(0x2000, 4)).to eq([0x0a, 0x09, 0x08, 0x07])
     end
   end
