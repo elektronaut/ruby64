@@ -23,12 +23,12 @@ module Ruby64
     end
 
     def <=>(other)
-      case other
-      when Uint, Numeric
-        value <=> convert(other)
-      else
-        value <=> other
-      end
+      value <=> case other
+                when Uint, Numeric
+                  convert(other)
+                else
+                  other
+                end
     end
 
     def inspect

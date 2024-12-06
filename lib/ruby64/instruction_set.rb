@@ -25,7 +25,7 @@ module Ruby64
 
     # Arithmetic shift left
     def asl(instruction, addr, value)
-      cycle {} if instruction.addressing_mode == :absolute_x
+      cycle if instruction.addressing_mode == :absolute_x
       v = value.call
       result = Uint8.new(v << 1)
       status.carry = v[7]
@@ -51,8 +51,8 @@ module Ruby64
     # Bit test
     def bit(_instruction, _addr, value)
       v = value.call
-      status.value = (status.value & 0b00111111) +
-                     (v & 0b11000000)
+      status.value = ((status.value & 0b00111111) +
+                      (v & 0b11000000)).to_i
       status.zero = Uint8.new(a & v).zero?
     end
 
@@ -73,7 +73,7 @@ module Ruby64
 
     # Interrupt
     def brk(_instruction, _addr, _value)
-      6.times { cycle {} }
+      6.times { cycle }
       status.break = true
     end
 
@@ -130,7 +130,7 @@ module Ruby64
 
     # Decrement
     def dec(instruction, addr, value)
-      cycle {} if instruction.addressing_mode == :absolute_x
+      cycle if instruction.addressing_mode == :absolute_x
       v = cycle { value.call - 1 }
       write_byte(addr, v)
       update_number_flags(v)
@@ -156,7 +156,7 @@ module Ruby64
 
     # Increment
     def inc(instruction, addr, value)
-      cycle {} if instruction.addressing_mode == :absolute_x
+      cycle if instruction.addressing_mode == :absolute_x
       v = cycle { value.call + 1 }
       write_byte(addr, v)
       update_number_flags(v)
@@ -205,7 +205,7 @@ module Ruby64
 
     # Logical shift right
     def lsr(instruction, addr, value)
-      cycle {} if instruction.addressing_mode == :absolute_x
+      cycle if instruction.addressing_mode == :absolute_x
       v = value.call
       result = Uint8.new(v >> 1)
       status.carry = v[0]
@@ -247,7 +247,7 @@ module Ruby64
 
     # Rotate left
     def rol(instruction, addr, value)
-      cycle {} if instruction.addressing_mode == :absolute_x
+      cycle if instruction.addressing_mode == :absolute_x
       v = value.call
       result = Uint8.new((v << 1) + status.carry)
       status.carry = v[7]
@@ -257,7 +257,7 @@ module Ruby64
 
     # Rotate right
     def ror(instruction, addr, value)
-      cycle {} if instruction.addressing_mode == :absolute_x
+      cycle if instruction.addressing_mode == :absolute_x
       v = value.call
       result = Uint8.new((v >> 1) + (status.carry? ? 0x80 : 0))
       status.carry = v[0]
@@ -369,7 +369,7 @@ module Ruby64
     private
 
     def branch(addr)
-      cycle {} if addr.high != @program_counter.high
+      cycle if addr.high != @program_counter.high
       cycle { @program_counter = addr }
     end
 

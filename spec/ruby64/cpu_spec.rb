@@ -23,8 +23,8 @@ describe Ruby64::CPU do
       before { execute([0x69, 0x01]) }
 
       specify { expect(cpu.a).to eq(0x02) }
-      specify { expect(cpu.status.carry?).to eq(false) }
-      specify { expect(cpu.status.overflow?).to eq(false) }
+      specify { expect(cpu.status.carry?).to be(false) }
+      specify { expect(cpu.status.overflow?).to be(false) }
       specify { expect(cpu.cycles).to eq(2) }
     end
 
@@ -35,8 +35,8 @@ describe Ruby64::CPU do
       end
 
       specify { expect(cpu.a).to eq(0x03) }
-      specify { expect(cpu.status.carry?).to eq(false) }
-      specify { expect(cpu.status.overflow?).to eq(false) }
+      specify { expect(cpu.status.carry?).to be(false) }
+      specify { expect(cpu.status.overflow?).to be(false) }
     end
 
     describe "rolling over" do
@@ -46,8 +46,8 @@ describe Ruby64::CPU do
       end
 
       specify { expect(cpu.a).to eq(0x00) }
-      specify { expect(cpu.status.carry?).to eq(true) }
-      specify { expect(cpu.status.overflow?).to eq(false) }
+      specify { expect(cpu.status.carry?).to be(true) }
+      specify { expect(cpu.status.overflow?).to be(false) }
     end
 
     describe "overflowing" do
@@ -56,7 +56,7 @@ describe Ruby64::CPU do
         execute([0x69, -1])
       end
 
-      specify { expect(cpu.status.overflow?).to eq(true) }
+      specify { expect(cpu.status.overflow?).to be(true) }
     end
   end
 
@@ -78,7 +78,7 @@ describe Ruby64::CPU do
       end
 
       specify { expect(cpu.a).to eq(0b11111110) }
-      specify { expect(cpu.status.carry?).to eq(true) }
+      specify { expect(cpu.status.carry?).to be(true) }
       specify { expect(cpu.cycles).to eq(2) }
     end
 
@@ -90,7 +90,7 @@ describe Ruby64::CPU do
       end
 
       specify { expect(cpu.a).to eq(0b10101010) }
-      specify { expect(cpu.status.carry?).to eq(false) }
+      specify { expect(cpu.status.carry?).to be(false) }
     end
   end
 
@@ -202,9 +202,9 @@ describe Ruby64::CPU do
         execute([0x24, 0x20])
       end
 
-      specify { expect(cpu.status.negative?).to eq(true) }
-      specify { expect(cpu.status.overflow?).to eq(true) }
-      specify { expect(cpu.status.zero?).to eq(true) }
+      specify { expect(cpu.status.negative?).to be(true) }
+      specify { expect(cpu.status.overflow?).to be(true) }
+      specify { expect(cpu.status.zero?).to be(true) }
       specify { expect(cpu.cycles).to eq(3) }
     end
 
@@ -215,9 +215,9 @@ describe Ruby64::CPU do
         execute([0x2c, 0x10, 0x20])
       end
 
-      specify { expect(cpu.status.negative?).to eq(false) }
-      specify { expect(cpu.status.overflow?).to eq(false) }
-      specify { expect(cpu.status.zero?).to eq(false) }
+      specify { expect(cpu.status.negative?).to be(false) }
+      specify { expect(cpu.status.overflow?).to be(false) }
+      specify { expect(cpu.status.zero?).to be(false) }
       specify { expect(cpu.cycles).to eq(4) }
     end
   end
@@ -330,7 +330,7 @@ describe Ruby64::CPU do
     end
 
     it "sets the break flag" do
-      expect(cpu.status.break?).to eq(true)
+      expect(cpu.status.break?).to be(true)
     end
 
     it "takes 7 cycles" do
@@ -417,7 +417,7 @@ describe Ruby64::CPU do
     specify { expect(cpu.cycles).to eq(2) }
 
     it "clears the flag" do
-      expect(cpu.status.carry?).to eq(false)
+      expect(cpu.status.carry?).to be(false)
     end
   end
 
@@ -430,7 +430,7 @@ describe Ruby64::CPU do
     specify { expect(cpu.cycles).to eq(2) }
 
     it "clears the flag" do
-      expect(cpu.status.decimal?).to eq(false)
+      expect(cpu.status.decimal?).to be(false)
     end
   end
 
@@ -443,7 +443,7 @@ describe Ruby64::CPU do
     specify { expect(cpu.cycles).to eq(2) }
 
     it "clears the flag" do
-      expect(cpu.status.interrupt?).to eq(false)
+      expect(cpu.status.interrupt?).to be(false)
     end
   end
 
@@ -456,7 +456,7 @@ describe Ruby64::CPU do
     specify { expect(cpu.cycles).to eq(2) }
 
     it "clears the flag" do
-      expect(cpu.status.overflow?).to eq(false)
+      expect(cpu.status.overflow?).to be(false)
     end
   end
 
@@ -469,7 +469,7 @@ describe Ruby64::CPU do
     specify { expect(cpu.cycles).to eq(2) }
 
     it "sets the flags" do
-      expect(cpu.status.carry?).to eq(true)
+      expect(cpu.status.carry?).to be(true)
     end
   end
 
@@ -482,7 +482,7 @@ describe Ruby64::CPU do
     specify { expect(cpu.cycles).to eq(2) }
 
     it "sets the flags" do
-      expect(cpu.status.carry?).to eq(true)
+      expect(cpu.status.carry?).to be(true)
     end
   end
 
@@ -495,7 +495,7 @@ describe Ruby64::CPU do
     specify { expect(cpu.cycles).to eq(2) }
 
     it "sets the flags" do
-      expect(cpu.status.carry?).to eq(true)
+      expect(cpu.status.carry?).to be(true)
     end
   end
 
@@ -666,7 +666,7 @@ describe Ruby64::CPU do
 
     specify { expect(cpu.cycles).to eq(6) }
     specify { expect(cpu.program_counter).to eq(0x2010) }
-    specify { expect(memory.peek_16(0x01fe)).to eq(0xc003) }
+    specify { expect(memory.peek16(0x01fe)).to eq(0xc003) }
     specify { expect(cpu.stack_pointer).to eq(0xfd) }
   end
 
@@ -838,7 +838,7 @@ describe Ruby64::CPU do
 
       specify { expect(cpu.cycles).to eq(2) }
       specify { expect(cpu.a).to eq(0b01111111) }
-      specify { expect(cpu.status.carry?).to eq(false) }
+      specify { expect(cpu.status.carry?).to be(false) }
     end
 
     context "with carry bit" do
@@ -849,7 +849,7 @@ describe Ruby64::CPU do
       end
 
       specify { expect(cpu.a).to eq(0b00101010) }
-      specify { expect(cpu.status.carry?).to eq(true) }
+      specify { expect(cpu.status.carry?).to be(true) }
     end
   end
 
@@ -943,7 +943,7 @@ describe Ruby64::CPU do
 
       specify { expect(cpu.cycles).to eq(2) }
       specify { expect(cpu.a).to eq(0b11111110) }
-      specify { expect(cpu.status.carry?).to eq(true) }
+      specify { expect(cpu.status.carry?).to be(true) }
     end
 
     context "with carry bit" do
@@ -954,7 +954,7 @@ describe Ruby64::CPU do
       end
 
       specify { expect(cpu.a).to eq(0b01010101) }
-      specify { expect(cpu.status.carry?).to eq(true) }
+      specify { expect(cpu.status.carry?).to be(true) }
     end
 
     context "with zeropage addressing" do
@@ -965,7 +965,7 @@ describe Ruby64::CPU do
 
       specify { expect(cpu.cycles).to eq(5) }
       specify { expect(memory.peek(0x20)).to eq(0b11111110) }
-      specify { expect(cpu.status.carry?).to eq(true) }
+      specify { expect(cpu.status.carry?).to be(true) }
     end
 
     context "with absolute addressing" do
@@ -976,7 +976,7 @@ describe Ruby64::CPU do
 
       specify { expect(cpu.cycles).to eq(6) }
       specify { expect(memory.peek(0x2010)).to eq(0b11111110) }
-      specify { expect(cpu.status.carry?).to eq(false) }
+      specify { expect(cpu.status.carry?).to be(false) }
     end
 
     context "with absolute_x addressing" do
@@ -988,7 +988,7 @@ describe Ruby64::CPU do
 
       specify { expect(cpu.cycles).to eq(7) }
       specify { expect(memory.peek(0x2012)).to eq(0b11111110) }
-      specify { expect(cpu.status.carry?).to eq(false) }
+      specify { expect(cpu.status.carry?).to be(false) }
     end
   end
 
@@ -1001,7 +1001,7 @@ describe Ruby64::CPU do
 
       specify { expect(cpu.cycles).to eq(2) }
       specify { expect(cpu.a).to eq(0b01111111) }
-      specify { expect(cpu.status.carry?).to eq(false) }
+      specify { expect(cpu.status.carry?).to be(false) }
     end
 
     context "with carry bit" do
@@ -1012,7 +1012,7 @@ describe Ruby64::CPU do
       end
 
       specify { expect(cpu.a).to eq(0b10101010) }
-      specify { expect(cpu.status.carry?).to eq(true) }
+      specify { expect(cpu.status.carry?).to be(true) }
     end
   end
 
@@ -1049,8 +1049,8 @@ describe Ruby64::CPU do
       end
 
       specify { expect(cpu.a).to eq(0x04) }
-      specify { expect(cpu.status.carry?).to eq(true) }
-      specify { expect(cpu.status.overflow?).to eq(false) }
+      specify { expect(cpu.status.carry?).to be(true) }
+      specify { expect(cpu.status.overflow?).to be(false) }
       specify { expect(cpu.cycles).to eq(2) }
     end
 
@@ -1062,8 +1062,8 @@ describe Ruby64::CPU do
       end
 
       specify { expect(cpu.a).to eq(0x03) }
-      specify { expect(cpu.status.carry?).to eq(true) }
-      specify { expect(cpu.status.overflow?).to eq(false) }
+      specify { expect(cpu.status.carry?).to be(true) }
+      specify { expect(cpu.status.overflow?).to be(false) }
     end
 
     describe "setting the carry bit rolling over" do
@@ -1073,8 +1073,8 @@ describe Ruby64::CPU do
       end
 
       specify { expect(cpu.a).to eq(0xff) }
-      specify { expect(cpu.status.carry?).to eq(false) }
-      specify { expect(cpu.status.overflow?).to eq(false) }
+      specify { expect(cpu.status.carry?).to be(false) }
+      specify { expect(cpu.status.overflow?).to be(false) }
     end
 
     describe "setting the overflow bit" do
@@ -1083,28 +1083,28 @@ describe Ruby64::CPU do
         execute([0xe9, 1])
       end
 
-      specify { expect(cpu.status.overflow?).to eq(true) }
+      specify { expect(cpu.status.overflow?).to be(true) }
     end
   end
 
   describe "SEC" do
     before { execute([0x38]) }
 
-    specify { expect(cpu.status.carry?).to eq(true) }
+    specify { expect(cpu.status.carry?).to be(true) }
     specify { expect(cpu.cycles).to eq(2) }
   end
 
   describe "SED" do
     before { execute([0xf8]) }
 
-    specify { expect(cpu.status.decimal?).to eq(true) }
+    specify { expect(cpu.status.decimal?).to be(true) }
     specify { expect(cpu.cycles).to eq(2) }
   end
 
   describe "SEI" do
     before { execute([0x78]) }
 
-    specify { expect(cpu.status.interrupt?).to eq(true) }
+    specify { expect(cpu.status.interrupt?).to be(true) }
     specify { expect(cpu.cycles).to eq(2) }
   end
 

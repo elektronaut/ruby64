@@ -6,6 +6,7 @@ $LOAD_PATH.unshift(File.join(File.dirname(__FILE__), "lib"))
 require "ruby64"
 require "ruby-prof"
 cpu = Ruby64::CPU.new
+profile = RubyProf::Profile.new
 
 iterations = 100_000
 
@@ -14,9 +15,9 @@ puts "Warming up..."
 iterations.times { cpu.cycle! }
 
 puts "Profiling #{iterations} cycles..."
-RubyProf.start
+profile.start
 iterations.times { cpu.cycle! }
-result = RubyProf.stop
+result = profile.stop
 
 puts "Cycles: #{cpu.cycles}, instructions: #{cpu.instructions}"
 

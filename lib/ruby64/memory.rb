@@ -27,7 +27,7 @@ module Ruby64
     end
     alias [] peek
 
-    def peek_16(addr)
+    def peek16(addr)
       Uint16.new(
         peek(addr),
         peek(addr + 1)

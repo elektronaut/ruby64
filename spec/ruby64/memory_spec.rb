@@ -54,23 +54,23 @@ describe Ruby64::Memory do
     let(:memory) { described_class.new(start: 0x100, length: 2**8) }
 
     it "returns true if address is in range" do
-      expect(memory.in_range?(0x1ff)).to eq(true)
+      expect(memory.in_range?(0x1ff)).to be(true)
     end
 
     it "returns false if address is not in range" do
-      expect(memory.in_range?(0xff)).to eq(false)
+      expect(memory.in_range?(0xff)).to be(false)
     end
   end
 
-  describe "#peek_16" do
+  describe "#peek16" do
     before { memory.poke(0x100, Ruby64::Uint16.new(1337)) }
 
     it "reads a 16 bit value" do
-      expect(memory.peek_16(0x100)).to eq(1337)
+      expect(memory.peek16(0x100)).to eq(1337)
     end
 
     it "returns a Uint16" do
-      expect(memory.peek_16(0x100)).to be_a(Ruby64::Uint16)
+      expect(memory.peek16(0x100)).to be_a(Ruby64::Uint16)
     end
   end
 

@@ -13,7 +13,7 @@ module Ruby64
     end
 
     def carry?
-      !(@value & masks[:carry]).zero?
+      !value.nobits?(masks[:carry])
     end
 
     def carry=(enabled)
@@ -21,7 +21,7 @@ module Ruby64
     end
 
     def zero?
-      !(@value & masks[:zero]).zero?
+      !value.nobits?(masks[:zero])
     end
 
     def zero=(enabled)
@@ -29,7 +29,7 @@ module Ruby64
     end
 
     def interrupt?
-      !(@value & masks[:interrupt]).zero?
+      !value.nobits?(masks[:interrupt])
     end
 
     def interrupt=(enabled)
@@ -37,7 +37,7 @@ module Ruby64
     end
 
     def decimal?
-      !(@value & masks[:decimal]).zero?
+      !value.nobits?(masks[:decimal])
     end
 
     def decimal=(enabled)
@@ -45,7 +45,7 @@ module Ruby64
     end
 
     def break?
-      !(@value & masks[:break]).zero?
+      !value.nobits?(masks[:break])
     end
 
     def break=(enabled)
@@ -53,7 +53,7 @@ module Ruby64
     end
 
     def overflow?
-      !(@value & masks[:overflow]).zero?
+      !value.nobits?(masks[:overflow])
     end
 
     def overflow=(enabled)
@@ -61,7 +61,7 @@ module Ruby64
     end
 
     def negative?
-      !(@value & masks[:negative]).zero?
+      !value.nobits?(masks[:negative])
     end
 
     def negative=(enabled)

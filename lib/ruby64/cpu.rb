@@ -12,7 +12,7 @@ module Ruby64
       @debug = debug
       @memory = memory || MemoryMap.new
       # The program counter is initialized from 0xfffc
-      @program_counter = @memory.peek_16(0xfffc)
+      @program_counter = @memory.peek16(0xfffc)
       # Stack pointer starts at 0x01ff and grows down
       @stack_pointer = Uint8.new(0xff)
       @status = Status.new(0b00100000)
@@ -48,7 +48,7 @@ module Ruby64
 
     def cycle
       Fiber.yield
-      result = yield
+      result = yield if block_given?
       @cycles += 1
       result
     end
@@ -90,21 +90,19 @@ module Ruby64
         :accumulator
       when :relative
         @program_counter + operand.signed + 1
-      when :zeropage
+      when :zeropage, :absolute
         operand
       when :zeropage_x
         cycle { operand + @x }
       when :zeropage_y
         cycle { operand + @y }
-      when :absolute
-        operand
       when :absolute_x
         # Do an extra cycle if page boundary is crossed
-        cycle {} if (operand + @x).high != operand.high
+        cycle if (operand + @x).high != operand.high
         operand + @x
       when :absolute_y
         # Do an extra cycle if page boundary is crossed
-        cycle {} if (operand + @y).high != operand.high
+        cycle if (operand + @y).high != operand.high
         operand + @y
       when :indirect
         # This is only used for JMP. There's no carry associated, so an
@@ -118,14 +116,14 @@ module Ruby64
           read_byte(operand)
         )
       when :indirect_x
-        cycle {}
+        cycle
         Uint16.new(
           read_byte(operand + @x),
           read_byte(operand + @x + 1) # Wrap around low byte
         )
       when :indirect_y
         # Do an extra cycle if page boundary is crossed
-        cycle {} if operand == 0xff
+        cycle if operand == 0xff
         read_word(operand) + y
       end
     end
@@ -149,8 +147,8 @@ module Ruby64
       pc = (@program_counter - 1) - instruction.operand_length
       puts(
         "PC: #{pc.inspect} - " \
-          "#{@instruction.name.upcase} #{@instruction.addressing_mode} " \
-          "Operand: #{operand.inspect} Address: #{address.inspect}"
+        "#{@instruction.name.upcase} #{@instruction.addressing_mode} " \
+        "Operand: #{operand.inspect} Address: #{address.inspect}"
       )
     end
 

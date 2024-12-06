@@ -8,10 +8,10 @@ describe Ruby64::Uint16 do
   end
 
   describe "comparing to an integer" do
-    specify { expect(int(8) == 8).to eq(true) }
-    specify { expect(int(8) == 10).to eq(false) }
-    specify { expect(int(8) < 20).to eq(true) }
-    specify { expect(int(8) < 8).to eq(false) }
+    specify { expect(int(8) == 8).to be(true) }
+    specify { expect(int(8) == 10).to be(false) }
+    specify { expect(int(8) < 20).to be(true) }
+    specify { expect(int(8) < 8).to be(false) }
   end
 
   it "can be added" do
