@@ -5,11 +5,12 @@ module Ruby64
     class OutOfBoundsError < StandardError; end
     class ReadOnlyMemoryError < StandardError; end
 
-    attr_reader :length, :start
+    attr_reader :length, :start, :end
 
     def initialize(initial = [], length: 2**16, start: 0)
       @length = length
       @start = start
+      @end = start + length
       @memory = zero_fill(initial)
     end
 
@@ -19,7 +20,7 @@ module Ruby64
 
     def in_range?(addr)
       addr_i = addr.to_i
-      addr_i >= start && addr_i < (start + length)
+      addr_i >= @start && addr_i < @end
     end
 
     def peek(addr)

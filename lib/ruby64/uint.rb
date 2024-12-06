@@ -1,11 +1,18 @@
 # frozen_string_literal: true
 
+require "forwardable"
+
 module Ruby64
   # Abstract unsigned integer
   class Uint
     include Comparable
 
     attr_reader :value
+
+    alias to_i value
+    extend Forwardable
+
+    def_delegators :@value, :nonzero?, :positive?, :zero?
 
     def initialize(value)
       @value = convert(value)
@@ -35,54 +42,48 @@ module Ruby64
       format("#{self.class.name}(0x%0#{bytes.length * 2}x)", value)
     end
 
-    def to_int
-      value
-    end
-
-    alias to_i to_int
-
     def +(other)
-      new(value + convert(other))
+      new(@value + convert(other))
     end
 
     def -(other)
-      new(value - convert(other))
+      new(@value - convert(other))
     end
 
     def *(other)
-      new(value * convert(other))
+      new(@value * convert(other))
     end
 
     def /(other)
-      new(value / convert(other))
+      new(@value / convert(other))
     end
 
     def <<(other)
-      new(value << convert(other))
+      new(@value << convert(other))
     end
 
     def >>(other)
-      new(value >> convert(other))
+      new(@value >> convert(other))
     end
 
     def &(other)
-      new(value & convert(other))
+      new(@value & convert(other))
     end
 
     def |(other)
-      new(value | convert(other))
+      new(@value | convert(other))
     end
 
     def ^(other)
-      new(value ^ convert(other))
+      new(@value ^ convert(other))
     end
 
     def ~
-      new(value ^ mask)
+      new(@value ^ mask)
     end
 
     def [](index)
-      value[index]
+      @value[index]
     end
 
     def respond_to_missing?(name)
@@ -91,18 +92,6 @@ module Ruby64
 
     def method_missing(name, *args)
       new(value.send(name, *args)) || super
-    end
-
-    def nonzero?
-      value.nonzero?
-    end
-
-    def positive?
-      value.positive?
-    end
-
-    def zero?
-      value.zero?
     end
 
     private
@@ -123,7 +112,7 @@ module Ruby64
     end
 
     def signed
-      value > 127 ? value - 256 : value
+      @value > 127 ? @value - 256 : @value
     end
 
     private
@@ -144,11 +133,11 @@ module Ruby64
     end
 
     def high
-      Uint8.new(value >> 8)
+      Uint8.new(@value >> 8)
     end
 
     def low
-      Uint8.new(value)
+      Uint8.new(@value)
     end
 
     def mask
