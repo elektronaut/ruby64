@@ -16,6 +16,58 @@ describe Ruby64::CPU do
     steps.times { cpu.step! }
   end
 
+  describe "Non-maskable interrupt" do
+    before do
+      memory.write(0xfffa, [0x39, 0x05])
+      memory.write(start_addr, [0x69, 0x05])
+      cpu.cycle!
+      cpu.nmi = true # Set the interrupt mid-instruction
+      2.times { cpu.step! } # Finish the instruction and perform the interrupt
+    end
+
+    specify { expect(cpu.cycles).to eq(2 + 7) }
+    specify { expect(cpu.stack_pointer).to eq(0xfc) }
+    specify { expect(cpu.status.interrupt?).to be(true) }
+    specify { expect(cpu.nmi).to be(false) }
+    specify { expect(cpu.program_counter).to eq(0x0539) }
+
+    it "finishes the previous instruction" do
+      expect(cpu.a).to eq(0x05)
+    end
+  end
+
+  describe "Interrupt request" do
+    let(:interrupt) { false }
+
+    before do
+      memory.write(0xfffe, [0x40, 0x05])
+      memory.write(start_addr, [0x69, 0x05])
+      cpu.status.interrupt = interrupt
+      cpu.cycle!
+      cpu.irq = true # Set the interrupt mid-instruction
+      2.times { cpu.step! } # Finish the instruction and perform the interrupt
+    end
+
+    specify { expect(cpu.cycles).to eq(2 + 7) }
+    specify { expect(cpu.stack_pointer).to eq(0xfc) }
+    specify { expect(cpu.status.interrupt?).to be(true) }
+    specify { expect(cpu.irq).to be(false) }
+    specify { expect(cpu.program_counter).to eq(0x0540) }
+
+    it "finishes the previous instruction" do
+      expect(cpu.a).to eq(0x05)
+    end
+
+    describe "when the interrupt flag is set" do
+      let(:interrupt) { true }
+
+      specify { expect(cpu.cycles).to eq(2) }
+      specify { expect(cpu.stack_pointer).to eq(0xff) }
+      specify { expect(cpu.program_counter).to eq(0xc002) }
+      specify { expect(cpu.irq).to be(false) }
+    end
+  end
+
   describe "ADC" do
     before { cpu.a = 0x01 }
 
@@ -360,16 +412,28 @@ describe Ruby64::CPU do
   end
 
   describe "BRK" do
+    let(:interrupt) { false }
+
     before do
+      memory.write(0xfffe, [0x40, 0x05])
+      cpu.status.interrupt = interrupt
       execute([0x00])
     end
 
-    it "sets the break flag" do
-      expect(cpu.status.break?).to be(true)
-    end
+    specify { expect(cpu.cycles).to eq(7) }
+    specify { expect(cpu.stack_pointer).to eq(0xfc) }
+    specify { expect(cpu.status.break?).to be(true) }
+    specify { expect(cpu.status.interrupt?).to be(true) }
+    specify { expect(cpu.irq).to be(false) }
+    specify { expect(cpu.program_counter).to eq(0x0540) }
 
-    it "takes 7 cycles" do
-      expect(cpu.cycles).to eq(7)
+    describe "when the interrupt flag is set" do
+      let(:interrupt) { true }
+
+      specify { expect(cpu.cycles).to eq(1) }
+      specify { expect(cpu.stack_pointer).to eq(0xff) }
+      specify { expect(cpu.program_counter).to eq(0xc001) }
+      specify { expect(cpu.irq).to be(false) }
     end
   end
 

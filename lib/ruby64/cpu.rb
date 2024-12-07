@@ -7,24 +7,26 @@ module Ruby64
     include InstructionSet
 
     attr_reader :memory, :cycles, :instructions
-    attr_accessor :program_counter, :stack_pointer, :status, :a, :x, :y
+    attr_accessor :program_counter, :stack_pointer, :status, :a, :x, :y,
+                  :nmi, :irq
 
     def initialize(memory = nil, debug: false)
       @debug = debug
       @memory = memory || MemoryMap.new
-      # The program counter is initialized from 0xfffc
-      @program_counter = @memory.peek16(0xfffc)
-      # Stack pointer starts at 0x01ff and grows down
-      @stack_pointer = 0xff
       @status = Status.new(0b00100000)
-      @a = 0x0
-      @x = 0x0
-      @y = 0x0
+      reset_registers
+
+      @nmi = @irq = false
 
       @loop = Fiber.new { loop { main_loop } }
 
       @cycles = 0
       @instructions = 0
+    end
+
+    def reset!
+      @status.interrupt = true
+      reset_registers
     end
 
     def p
@@ -36,8 +38,8 @@ module Ruby64
     end
 
     def step!
-      @loop.resume unless @instruction
-      cycle! while @instruction
+      @loop.resume unless @instruction || @interrupt
+      cycle! while @instruction || @interrupt
     end
 
     def cycle!
@@ -52,6 +54,30 @@ module Ruby64
       result = yield if block_given?
       @cycles += 1
       result
+    end
+
+    def handle_interrupt(vector, pre_cycles = 2)
+      pre_cycles.times { cycle }
+      write_byte(stack_address, high_byte(@program_counter))
+      @stack_pointer = (@stack_pointer - 1) & 0xff
+      write_byte(stack_address, low_byte(@program_counter))
+      @stack_pointer = (@stack_pointer - 1) & 0xff
+      write_byte(stack_address, @status.value & ~0b00010000)
+      @stack_pointer = (@stack_pointer - 1) & 0xff
+      @status.interrupt = true
+      @program_counter = read_word(vector)
+    end
+
+    def handle_interrupts
+      @interrupt = if nmi
+                     0xfffa
+                   elsif irq && !status.interrupt?
+                     0xfffe
+                   end
+
+      handle_interrupt(@interrupt) if @interrupt
+      @interrupt = nil
+      @nmi = @irq = false
     end
 
     def read_byte(addr)
@@ -77,8 +103,12 @@ module Ruby64
       end
     end
 
-    def word(bytes)
-      uint16(bytes[0], bytes[1])
+    def reset_registers
+      # The program counter is initialized from the reset vector
+      @program_counter = @memory.peek16(0xfffc)
+      # Stack pointer starts at 0x01ff and grows down
+      @stack_pointer = 0xff
+      @a = @x = @y = 0x0
     end
 
     def read_address(instruction, operand)
@@ -140,6 +170,10 @@ module Ruby64
       end
     end
 
+    def stack_address
+      uint16(stack_pointer, 0x01)
+    end
+
     def log(instruction, operand, address)
       return unless @debug
 
@@ -151,30 +185,46 @@ module Ruby64
       )
     end
 
+    def interrupt?
+      nmi || irq || @status.break?
+    end
+
     def main_loop
-      @instruction = read_instruction
-      raise InvalidOpcodeError unless @instruction
+      if interrupt?
+        handle_interrupts
+      else
+        @instruction = read_instruction
+        raise InvalidOpcodeError unless @instruction
 
-      @program_counter += 1
-      @cycles += 1
+        @program_counter += 1
+        @cycles += 1
 
-      operand = read_operand(@instruction)
-      address = read_address(@instruction, operand)
-      @program_counter += @instruction.operand_length
+        operand = read_operand(@instruction)
+        address = read_address(@instruction, operand)
+        @program_counter += @instruction.operand_length
 
-      log(@instruction, operand, address)
+        log(@instruction, operand, address)
 
-      # Run instruction and update processor status
-      send(
-        @instruction.name,
-        @instruction,
-        address,
-        -> { realize_value(@instruction, operand, address) }
-      )
+        # Run instruction and update processor status
+        send(
+          @instruction.name,
+          @instruction,
+          address,
+          -> { realize_value(@instruction, operand, address) }
+        )
 
-      @instructions += 1
-      @instruction = nil
+        @instructions += 1
+        @instruction = nil
+      end
       Fiber.yield
+    end
+
+    def write_byte(addr, value)
+      if addr == :accumulator
+        @a = value
+      else
+        cycle { memory[addr] = value }
+      end
     end
   end
 end

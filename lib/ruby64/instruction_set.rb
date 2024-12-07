@@ -90,8 +90,8 @@ module Ruby64
 
     # Interrupt
     def brk(_instruction, _addr, _value)
-      6.times { cycle }
       status.break = true
+      handle_interrupt(0xfffe, 1) unless status.interrupt?
     end
 
     # Branch on overflow clear
@@ -399,10 +399,6 @@ module Ruby64
       cycle { @program_counter = addr }
     end
 
-    def stack_address
-      uint16(stack_pointer, 0x01)
-    end
-
     def stack_pull
       cycle { @stack_pointer = (@stack_pointer + 1) & 0xff }
       read_byte(stack_address)
@@ -422,14 +418,6 @@ module Ruby64
     def update_number_flags(value)
       status.zero = value.zero?
       status.negative = ((value & 0xff) >> 7 == 1)
-    end
-
-    def write_byte(addr, value)
-      if addr == :accumulator
-        @a = value
-      else
-        cycle { memory[addr] = value }
-      end
     end
   end
 end
