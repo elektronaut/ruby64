@@ -2,6 +2,8 @@
 
 module Ruby64
   class Memory
+    include IntegerHelper
+
     class OutOfBoundsError < StandardError; end
     class ReadOnlyMemoryError < StandardError; end
 
@@ -24,27 +26,26 @@ module Ruby64
     end
 
     def peek(addr)
-      Uint8.new(@memory[index(addr)])
+      @memory[index(addr)]
     end
     alias [] peek
 
     def peek16(addr)
-      Uint16.new(
-        peek(addr),
-        peek(addr + 1)
-      )
+      uint16(peek(addr),
+             peek(addr + 1))
     end
 
     def poke(addr, value)
-      if value.is_a?(Uint16)
-        @memory[index(addr)] = value.low.to_i
-        @memory[index(addr + 1)] = value.high.to_i
-      else
-        @memory[index(addr)] = value.to_i
-      end
+      @memory[index(addr)] = value
       value
     end
     alias []= poke
+
+    def poke16(addr, value)
+      @memory[index(addr)] = low_byte(value)
+      @memory[index(addr + 1)] = high_byte(value)
+      value
+    end
 
     def read(addr, length)
       (addr...(addr + length)).to_a.map { |a| peek(a) }

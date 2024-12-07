@@ -63,32 +63,26 @@ describe Ruby64::Memory do
   end
 
   describe "#peek16" do
-    before { memory.poke(0x100, Ruby64::Uint16.new(1337)) }
+    before { memory.poke(0x100, 1337) }
 
     it "reads a 16 bit value" do
       expect(memory.peek16(0x100)).to eq(1337)
     end
-
-    it "returns a Uint16" do
-      expect(memory.peek16(0x100)).to be_a(Ruby64::Uint16)
-    end
   end
 
   describe "#poke" do
-    context "with an 8 bit value" do
-      before { memory.poke(0x100, 0x80) }
+    before { memory.poke(0x100, 0x80) }
 
-      it "stores the value" do
-        expect(memory.peek(0x100)).to eq(0x80)
-      end
+    it "stores the value" do
+      expect(memory.peek(0x100)).to eq(0x80)
     end
+  end
 
-    context "with a 16 bit value" do
-      before { memory.poke(0x100, Ruby64::Uint16.new(0x0539)) }
+  describe "#poke16" do
+    before { memory.poke16(0x100, 0x0539) }
 
-      specify { expect(memory.peek(0x100)).to eq(0x39) }
-      specify { expect(memory.peek(0x101)).to eq(0x05) }
-    end
+    specify { expect(memory.peek(0x100)).to eq(0x39) }
+    specify { expect(memory.peek(0x101)).to eq(0x05) }
   end
 
   describe "#write and #read" do

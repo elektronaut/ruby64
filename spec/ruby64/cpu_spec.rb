@@ -3,7 +3,7 @@
 require "spec_helper"
 
 describe Ruby64::CPU do
-  let(:start_addr) { Ruby64::Uint16.new(0xc000) }
+  let(:start_addr) { 0xc000 }
   let(:memory) do
     Ruby64::Memory.new.tap do |m|
       m.poke(0xfffc, start_addr)
@@ -118,7 +118,7 @@ describe Ruby64::CPU do
     end
 
     context "when branching across page boundary" do
-      let(:offset) { Ruby64::Uint8.new(-100) }
+      let(:offset) { -100 }
 
       specify { expect(cpu.program_counter).to eq(0xbf9e) }
       specify { expect(cpu.cycles).to eq(4) }
@@ -153,7 +153,7 @@ describe Ruby64::CPU do
     end
 
     context "when branching across page boundary" do
-      let(:offset) { Ruby64::Uint8.new(-100) }
+      let(:offset) { -100 }
 
       it "spends an extra cycle" do
         expect(cpu.cycles).to eq(4)
@@ -189,7 +189,7 @@ describe Ruby64::CPU do
     end
 
     context "when branching across page boundary" do
-      let(:offset) { Ruby64::Uint8.new(-100) }
+      let(:offset) { -100 }
 
       specify { expect(cpu.cycles).to eq(4) }
     end
@@ -250,7 +250,7 @@ describe Ruby64::CPU do
     end
 
     context "when branching across page boundary" do
-      let(:offset) { Ruby64::Uint8.new(-100) }
+      let(:offset) { -100 }
 
       specify { expect(cpu.cycles).to eq(4) }
     end
@@ -284,7 +284,7 @@ describe Ruby64::CPU do
     end
 
     context "when branching across page boundary" do
-      let(:offset) { Ruby64::Uint8.new(-100) }
+      let(:offset) { -100 }
 
       specify { expect(cpu.cycles).to eq(4) }
     end
@@ -318,7 +318,7 @@ describe Ruby64::CPU do
     end
 
     context "when branching across page boundary" do
-      let(:offset) { Ruby64::Uint8.new(-100) }
+      let(:offset) { -100 }
 
       specify { expect(cpu.cycles).to eq(4) }
     end
@@ -366,7 +366,7 @@ describe Ruby64::CPU do
     end
 
     context "when branching across page boundary" do
-      let(:offset) { Ruby64::Uint8.new(-100) }
+      let(:offset) { -100 }
 
       it "spends an extra cycle" do
         expect(cpu.cycles).to eq(4)
@@ -402,7 +402,7 @@ describe Ruby64::CPU do
     end
 
     context "when branching across page boundary" do
-      let(:offset) { Ruby64::Uint8.new(-100) }
+      let(:offset) { -100 }
 
       specify { expect(cpu.cycles).to eq(4) }
     end

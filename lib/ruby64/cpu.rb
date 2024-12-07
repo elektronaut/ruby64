@@ -3,6 +3,7 @@
 module Ruby64
   class CPU
     class InvalidOpcodeError < StandardError; end
+    include IntegerHelper
     include InstructionSet
 
     attr_reader :memory, :cycles, :instructions
@@ -14,11 +15,11 @@ module Ruby64
       # The program counter is initialized from 0xfffc
       @program_counter = @memory.peek16(0xfffc)
       # Stack pointer starts at 0x01ff and grows down
-      @stack_pointer = Uint8.new(0xff)
+      @stack_pointer = 0xff
       @status = Status.new(0b00100000)
-      @a = Uint8.new(0x0)
-      @x = Uint8.new(0x0)
-      @y = Uint8.new(0x0)
+      @a = 0x0
+      @x = 0x0
+      @y = 0x0
 
       @loop = Fiber.new { loop { main_loop } }
 
@@ -58,10 +59,8 @@ module Ruby64
     end
 
     def read_word(addr)
-      Uint16.new(
-        read_byte(addr),
-        read_byte(addr.to_i + 1)
-      )
+      uint16(read_byte(addr),
+             read_byte(addr + 1))
     end
 
     def read_instruction
@@ -79,7 +78,7 @@ module Ruby64
     end
 
     def word(bytes)
-      Uint16.new(bytes[0], bytes[1])
+      uint16(bytes[0], bytes[1])
     end
 
     def read_address(instruction, operand)
@@ -89,7 +88,7 @@ module Ruby64
       when :accumulator
         :accumulator
       when :relative
-        @program_counter + operand.signed + 1
+        @program_counter + signed_int8(operand) + 1
       when :zeropage, :absolute
         operand
       when :zeropage_x
@@ -98,26 +97,26 @@ module Ruby64
         cycle { operand + @y }
       when :absolute_x
         # Do an extra cycle if page boundary is crossed
-        cycle if (operand + @x).high != operand.high
+        cycle if high_byte(operand + @x) != high_byte(operand)
         operand + @x
       when :absolute_y
         # Do an extra cycle if page boundary is crossed
-        cycle if (operand + @y).high != operand.high
+        cycle if high_byte(operand + @y) != high_byte(operand)
         operand + @y
       when :indirect
         # This is only used for JMP. There's no carry associated, so an
         # indirect jump to $30FF will wrap around on the same page and read
         # from [0x30ff, 0x3000].
-        Uint16.new(
-          read_byte(Uint16.new(
-                      (operand.low + 1), # Wrap around low byte
-                      operand.high
+        uint16(
+          read_byte(uint16(
+                      (low_byte(operand) + 1) & 0xff, # Wrap around low byte
+                      high_byte(operand)
                     )),
           read_byte(operand)
         )
       when :indirect_x
         cycle
-        Uint16.new(
+        uint16(
           read_byte(operand + @x),
           read_byte(operand + @x + 1) # Wrap around low byte
         )

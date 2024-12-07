@@ -2,7 +2,7 @@
 
 require "fiber"
 
-require "ruby64/uint"
+require "ruby64/integer_helper"
 require "ruby64/memory"
 require "ruby64/rom"
 require "ruby64/memory_map"
