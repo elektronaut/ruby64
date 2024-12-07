@@ -7,15 +7,14 @@
 Ruby64 is a Commodore 64 emulator in written in Ruby. It is cycle accurate,
 utilizing Fibers to emulate cycles.
 
-Currently the memory map and 6510 CPU is working, sans interrupts and
-decimal mode. It's running at about 10% of the original speed, Ruby is
+Currently the memory map and 6510 CPU is working, sans
+interrupts. It's running at about 10% of the original speed, Ruby is
 currently too slow for realtime performance. SID emulation is probably
 also out of the question.
 
 ## TODO
 
 - Interrupts
-- BCD mode
 - VIC-II emulation
 - CIA 1/2
 - C1541 emulation

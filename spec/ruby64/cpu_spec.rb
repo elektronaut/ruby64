@@ -60,6 +60,41 @@ describe Ruby64::CPU do
     end
   end
 
+  describe "ADC (decimal mode)" do
+    before do
+      cpu.a = 0x22
+      cpu.status.decimal = true
+    end
+
+    describe "adding a value" do
+      before { execute([0x69, 0x33]) }
+
+      specify { expect(cpu.a).to eq(0x55) }
+      specify { expect(cpu.status.carry?).to be(false) }
+    end
+
+    describe "when the carry bit is set" do
+      before do
+        cpu.status.carry = true
+        execute([0x69, 0x01])
+      end
+
+      specify { expect(cpu.a).to eq(0x24) }
+      specify { expect(cpu.status.carry?).to be(false) }
+    end
+
+    describe "rolling over" do
+      before do
+        cpu.a = 0x99
+        execute([0x69, 0x01])
+      end
+
+      specify { expect(cpu.a).to eq(0x00) }
+      specify { expect(cpu.status.carry?).to be(true) }
+      specify { expect(cpu.status.overflow?).to be(false) }
+    end
+  end
+
   describe "AND" do
     before do
       cpu.a = 0b00001111
@@ -1042,7 +1077,7 @@ describe Ruby64::CPU do
   end
 
   describe "SBC" do
-    describe "adding the values" do
+    describe "subtracting the values" do
       before do
         cpu.a = 0x05
         execute([0xe9, 0x01])
@@ -1084,6 +1119,41 @@ describe Ruby64::CPU do
       end
 
       specify { expect(cpu.status.overflow?).to be(true) }
+    end
+  end
+
+  describe "SBC (decimal mode)" do
+    before do
+      cpu.a = 0x55
+      cpu.status.decimal = true
+    end
+
+    describe "subtracting a value" do
+      before { execute([0xe9, 0x33]) }
+
+      specify { expect(cpu.a).to eq(0x22) }
+      specify { expect(cpu.status.carry?).to be(true) }
+    end
+
+    describe "when the carry bit is set" do
+      before do
+        cpu.status.carry = true
+        execute([0xe9, 0x01])
+      end
+
+      specify { expect(cpu.a).to eq(0x53) }
+      specify { expect(cpu.status.carry?).to be(true) }
+    end
+
+    describe "rolling over" do
+      before do
+        cpu.a = 0x0
+        execute([0xe9, 0x01])
+      end
+
+      specify { expect(cpu.a).to eq(0x99) }
+      specify { expect(cpu.status.carry?).to be(false) }
+      specify { expect(cpu.status.overflow?).to be(false) }
     end
   end
 

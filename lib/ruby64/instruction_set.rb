@@ -6,14 +6,31 @@ module Ruby64
   module InstructionSet
     # Add with carry.
     def adc(_instruction, _addr, value)
-      raise "BCD mode not implemented yet" if status.decimal?
-
       v = value.call
-      result = a + v + status.carry
-      signed_result = signed_int8(a) + signed_int8(v) + status.carry
-      status.carry = result > 0xff
-      status.overflow = !(-128..127).cover?(signed_result)
-      @a = result & 0xff
+      if status.decimal?
+        lo = (a & 0x0f) + (v & 0x0f) + status.carry
+        hi = (a >> 4) + (v >> 4)
+
+        if lo > 9
+          lo -= 10
+          hi += 1
+        end
+
+        status.carry = false
+        if hi > 9
+          hi -= 10
+          status.carry = true
+        end
+
+        @a = ((hi << 4) | lo) & 0xff
+      else
+        result = a + v + status.carry
+        signed_result = signed_int8(a) + signed_int8(v) + status.carry
+        status.carry = result > 0xff
+        status.overflow = !(-128..127).cover?(signed_result)
+        @a = result & 0xff
+      end
+
       update_number_flags(@a)
     end
 
@@ -281,14 +298,31 @@ module Ruby64
 
     # Subtract with carry
     def sbc(_instruction, _addr, value)
-      raise "BCD mode not implemented yet" if status.decimal?
-
       v = value.call
-      result = a - v - status.carry
-      signed_result = signed_int8(a) - signed_int8(v) - status.carry
-      status.carry = result.positive?
-      status.overflow = !(-128..127).cover?(signed_result)
-      @a = result & 0xff
+      if status.decimal?
+        lo = (a & 0x0f) - (v & 0x0f) - status.carry
+        hi = (a >> 4) - (v >> 4)
+
+        if lo.negative?
+          lo += 10
+          hi -= 1
+        end
+
+        if hi.negative?
+          hi += 10
+          status.carry = false
+        else
+          status.carry = true
+        end
+
+        @a = ((hi << 4) | lo) & 0xff
+      else
+        result = a - v - status.carry
+        signed_result = signed_int8(a) - signed_int8(v) - status.carry
+        status.carry = result.positive?
+        status.overflow = !(-128..127).cover?(signed_result)
+        @a = result & 0xff
+      end
       update_number_flags(@a)
     end
 
