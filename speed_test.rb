@@ -5,11 +5,11 @@ $LOAD_PATH.unshift(File.join(File.dirname(__FILE__), "lib"))
 
 require "ruby64"
 require "benchmark/ips"
-cpu = Ruby64::CPU.new
+computer = Ruby64::Computer.new
 
 Benchmark.ips do |x|
   x.config(time: 10, warmup: 5)
-  x.report("CPU cycle") { cpu.cycle! }
+  x.report("CPU cycle") { computer.cycle! }
 end
 
-puts "Cycles: #{cpu.cycles}, instructions: #{cpu.instructions}"
+puts "Cycles: #{computer.cycles}, instructions: #{computer.cpu.instructions}"

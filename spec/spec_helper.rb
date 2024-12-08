@@ -4,3 +4,4 @@ require "simplecov"
 SimpleCov.start
 
 require "ruby64"
+require "timecop"

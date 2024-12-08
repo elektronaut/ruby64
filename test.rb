@@ -4,10 +4,10 @@
 $LOAD_PATH.unshift(File.join(File.dirname(__FILE__), "lib"))
 
 require "ruby64"
-cpu = Ruby64::CPU.new(nil, debug: true)
+computer = Ruby64::Computer.new(debug: true)
 
 begin
-  loop { cpu.step! }
+  loop { computer.cycle! }
 ensure
-  puts "Cycles: #{cpu.cycles}, instructions: #{cpu.instructions}"
+  puts "Cycles: #{computer.cycles}, instructions: #{computer.cpu.instructions}"
 end

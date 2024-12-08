@@ -2,6 +2,15 @@
 
 module Ruby64
   module IntegerHelper
+    def bcd(number)
+      high, low = number.divmod(10)
+      (high << 4) + low
+    end
+
+    def bcd_to_i(number)
+      (((number & 0xf0) >> 4) * 10) + (number & 0x0f)
+    end
+
     def high_byte(number)
       (number >> 8) & 0xff
     end

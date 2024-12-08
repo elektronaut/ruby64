@@ -6,6 +6,9 @@ module Ruby64
     include IntegerHelper
     include InstructionSet
 
+    CPU_FLAGS = [:carry, :zero, :interrupt, :decimal, :break, nil,
+                 :overflow, :negative].freeze
+
     attr_reader :memory, :cycles, :instructions
     attr_accessor :program_counter, :stack_pointer, :status, :a, :x, :y,
                   :nmi, :irq
@@ -13,7 +16,7 @@ module Ruby64
     def initialize(memory = nil, debug: false)
       @debug = debug
       @memory = memory || MemoryMap.new
-      @status = Status.new(0b00100000)
+      @status = Status.new(CPU_FLAGS, value: 0b00100000)
       reset_registers
 
       @nmi = @irq = false
@@ -25,16 +28,16 @@ module Ruby64
     end
 
     def reset!
-      @status.interrupt = true
+      status.interrupt = true
       reset_registers
     end
 
     def p
-      @status.value
+      status.value
     end
 
     def p=(new_value)
-      @status.value = new_value
+      status.value = new_value
     end
 
     def step!
@@ -62,9 +65,9 @@ module Ruby64
       @stack_pointer = (@stack_pointer - 1) & 0xff
       write_byte(stack_address, low_byte(@program_counter))
       @stack_pointer = (@stack_pointer - 1) & 0xff
-      write_byte(stack_address, @status.value & ~0b00010000)
+      write_byte(stack_address, status.value & ~0b00010000)
       @stack_pointer = (@stack_pointer - 1) & 0xff
-      @status.interrupt = true
+      status.interrupt = true
       @program_counter = read_word(vector)
     end
 
@@ -179,18 +182,14 @@ module Ruby64
 
       pc = (@program_counter - 1) - instruction.operand_length
       puts(
-        "PC: #{pc.inspect} - " \
+        "PC: #{pc.to_s(16)} - " \
         "#{@instruction.name.upcase} #{@instruction.addressing_mode} " \
         "Operand: #{operand.inspect} Address: #{address.inspect}"
       )
     end
 
-    def interrupt?
-      nmi || irq || @status.break?
-    end
-
     def main_loop
-      if interrupt?
+      if nmi || irq
         handle_interrupts
       else
         @instruction = read_instruction

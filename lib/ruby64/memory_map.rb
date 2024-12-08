@@ -27,11 +27,12 @@ module Ruby64
   # 0xD000-0xDFFF - Character ROM / I/O - 4kb
   # 0xE000-0xFFFF - KERNAL ROM / Cartridge ROM (high) - 8kb
   class MemoryMap < Memory
-    def initialize(initial = [0xff, 0x07], length: 2**16, start: 0)
-      super
-      @basic     = ROM.load("basic.rom",     0xa000)
-      @character = ROM.load("character.rom", 0xd000)
-      @kernal    = ROM.load("kernal.rom",    0xe000)
+    def initialize(io: [])
+      super([0xff, 0x07], length: 2**16, start: 0)
+      @basic       = ROM.load("basic.rom",     0xa000)
+      @character   = ROM.load("character.rom", 0xd000)
+      @kernal      = ROM.load("kernal.rom",    0xe000)
+      @io_overlays = io
     end
 
     def disable_overlays!
@@ -39,27 +40,43 @@ module Ruby64
     end
 
     def peek(addr)
-      if overlay_at(addr)
-        overlay_at(addr).peek(addr)
-      else
-        super
-      end
+      read_overlay_at(addr)&.peek(addr) || super
     end
     alias [] peek
 
+    def poke(addr, value)
+      write_overlay_at(addr)&.poke(addr, value) || super
+    end
+    alias []= poke
+
     private
 
-    def overlays
-      @overlays ||= {}
-      @overlays[mode] ||= [
-        basic?     ? @basic     : nil,
-        character? ? @character : nil,
-        kernal?    ? @kernal    : nil
-      ].compact
+    def write_overlays
+      @write_overlays ||= {}
+      @write_overlays[mode] ||= enabled_io_overlays
     end
 
-    def overlay_at(addr)
-      overlays.find { |o| o.in_range?(addr) }
+    def write_overlay_at(addr)
+      write_overlays.find { |o| o.in_range?(addr) }
+    end
+
+    def read_overlays
+      @read_overlays ||= {}
+      @read_overlays[mode] ||= enabled_io_overlays + enabled_rom_overlays
+    end
+
+    def read_overlay_at(addr)
+      read_overlays.find { |o| o.in_range?(addr) }
+    end
+
+    def enabled_io_overlays
+      io? ? @io_overlays : []
+    end
+
+    def enabled_rom_overlays
+      [basic?     ? @basic     : nil,
+       character? ? @character : nil,
+       kernal?    ? @kernal    : nil].compact
     end
 
     def basic?
@@ -71,9 +88,8 @@ module Ruby64
     end
 
     def io?
-      [
-        31, 30, 29, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 7, 6, 5
-      ].include?(mode)
+      [31, 30, 29, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13,
+       7, 6, 5].include?(mode)
     end
 
     def kernal?

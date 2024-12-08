@@ -5,6 +5,14 @@ require "spec_helper"
 describe Ruby64::IntegerHelper do
   include described_class
 
+  describe ".bcd" do
+    specify { expect(bcd(53)).to eq(0x53) }
+  end
+
+  describe ".bcd_to_i" do
+    specify { expect(bcd_to_i(0x53)).to eq(53) }
+  end
+
   describe ".high_byte" do
     specify { expect(high_byte(1337)).to eq(5) }
   end
