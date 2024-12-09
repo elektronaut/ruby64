@@ -141,11 +141,11 @@ module Ruby64
         # indirect jump to $30FF will wrap around on the same page and read
         # from [0x30ff, 0x3000].
         uint16(
+          read_byte(operand),
           read_byte(uint16(
                       (low_byte(operand) + 1) & 0xff, # Wrap around low byte
                       high_byte(operand)
-                    )),
-          read_byte(operand)
+                    ))
         )
       when :indirect_x
         cycle

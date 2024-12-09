@@ -742,12 +742,13 @@ describe Ruby64::CPU do
       specify { expect(cpu.cycles).to eq(5) }
 
       it "updates the program counter" do
-        expect(cpu.program_counter).to eq(0x0539)
+        expect(cpu.program_counter).to eq(0x3905)
       end
     end
 
     context "when indirect addressing (at page boundary)" do
       before do
+        memory.write(0x2100, [0x11])
         memory.write(0x21ff, [0x05, 0x39])
         execute([0x6c, 0xff, 0x21])
       end
@@ -755,7 +756,7 @@ describe Ruby64::CPU do
       specify { expect(cpu.cycles).to eq(5) }
 
       it "updates the program counter" do
-        expect(cpu.program_counter).to eq(0x0500)
+        expect(cpu.program_counter).to eq(0x1105)
       end
     end
   end
