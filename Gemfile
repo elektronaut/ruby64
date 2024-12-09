@@ -4,6 +4,7 @@ source "https://rubygems.org"
 
 group :development, :test do
   gem "benchmark-ips"
+  gem "pry"
   gem "rspec"
   gem "rubocop"
   gem "rubocop-rspec"

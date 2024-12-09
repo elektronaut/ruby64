@@ -6,17 +6,15 @@ module Ruby64
     include IntegerHelper
     include InstructionSet
 
-    CPU_FLAGS = [:carry, :zero, :interrupt, :decimal, :break, 1,
-                 :overflow, :negative].freeze
-
     attr_reader :memory, :cycles, :instructions
     attr_accessor :program_counter, :stack_pointer, :status, :a, :x, :y,
                   :nmi, :irq
 
     def initialize(memory = nil, debug: false)
       @debug = debug
-      @memory = memory || MemoryMap.new
-      @status = Status.new(CPU_FLAGS, value: 0b00100000)
+      @memory = memory || Memory.new
+      @status = Status.new([:carry, :zero, :interrupt, :decimal, :break, 1,
+                            :overflow, :negative], value: 0b00100000)
       reset_registers
 
       @nmi = @irq = false
@@ -182,6 +180,7 @@ module Ruby64
 
       pc = (@program_counter - 1) - instruction.operand_length
       puts(
+        "#{@cycles}: " \
         "PC: #{pc.to_s(16)} - " \
         "#{@instruction.name.upcase} #{@instruction.addressing_mode} " \
         "Operand: #{operand.inspect} Address: #{address.inspect}"

@@ -2,48 +2,19 @@
 
 module Ruby64
   class Memory
-    include IntegerHelper
-
-    class OutOfBoundsError < StandardError; end
-    class ReadOnlyMemoryError < StandardError; end
-
-    attr_reader :length, :start, :end
+    include Addressable
 
     def initialize(initial = [], length: 2**16, start: 0)
-      @length = length
-      @start = start
-      @end = start + length
-      @memory = zero_fill(initial)
-    end
-
-    def range
-      start..(start + (length - 1))
-    end
-
-    def in_range?(addr)
-      addr_i = addr.to_i
-      addr_i >= @start && addr_i < @end
+      addressable_at(start, length:)
+      @storage = zero_fill(initial)
     end
 
     def peek(addr)
-      @memory[index(addr)]
-    end
-    alias [] peek
-
-    def peek16(addr)
-      uint16(peek(addr),
-             peek(addr + 1))
+      @storage[index(addr)]
     end
 
     def poke(addr, value)
-      @memory[index(addr)] = value
-      value
-    end
-    alias []= poke
-
-    def poke16(addr, value)
-      @memory[index(addr)] = low_byte(value)
-      @memory[index(addr + 1)] = high_byte(value)
+      @storage[index(addr)] = value
       value
     end
 
@@ -57,18 +28,14 @@ module Ruby64
 
     private
 
-    def index(addr)
-      unless in_range?(addr.to_i)
-        raise OutOfBoundsError, "#{addr.inspect} (#{range})"
-      end
-
-      addr.to_i - start
+    def blank_value
+      0
     end
 
     def zero_fill(initial)
       array = initial.dup
       0.upto(length - 1) do |i|
-        array[i] ||= 0
+        array[i] ||= blank_value
       end
       array
     end

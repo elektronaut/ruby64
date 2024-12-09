@@ -2,19 +2,15 @@
 
 module Ruby64
   # CIA (Complex Interface Adapter) chip
-  class CIA < Memory
-    INTERRUPT_CONTROL = %i[timer_a timer_b tod serial flag_line].freeze
-    INTERRUPT_STATUS = INTERRUPT_CONTROL + [0, 0, :interrupt].freeze
-    CONTROL_FLAGS = %i[start output output_mode run_mode force_load].freeze
-    CONTROL_A_FLAGS = CONTROL_FLAGS + %i[input_mode serial_mode clock_frequency]
-    CONTROL_B_FLAGS = CONTROL_FLAGS + %i[count_a input_mode alarm]
+  class CIA
+    include Addressable
 
     attr_accessor :timer_a, :timer_b, :timer_a_latch, :timer_b_latch
     attr_reader :start, :control_a, :control_b,
                 :interrupt_status, :interrupt_control
 
     def initialize(start: 0)
-      super(start: start, length: 2**8)
+      addressable_at(start, length: 2**8)
 
       @data_dir_a = 0xff
       @data_dir_b = 0x0
@@ -22,10 +18,14 @@ module Ruby64
       @timer_a_latch = @timer_b_latch = 0x0
       @serial_data = 0x0
       @clock_start = Time.now
-      @interrupt_control = Status.new(INTERRUPT_CONTROL + [0, 0, 0])
-      @interrupt_status = Status.new(INTERRUPT_STATUS)
-      @control_a = Status.new(CONTROL_A_FLAGS)
-      @control_b = Status.new(CONTROL_B_FLAGS)
+      @interrupt_control = Status.new([:timer_a, :timer_b, :alarm, :serial,
+                                       :flag, 0, 0, 0])
+      @interrupt_status = Status.new([:timer_a, :timer_b, :alarm, :serial,
+                                      :flag, 0, 0, :interrupt])
+      @control_a = Status.new(%i[start output out_mode run_mode load
+                                 in_mode serial_mode clock_frequency])
+      @control_b = Status.new(%i[start output out_mode run_mode load
+                                 count_a in_mode alarm])
     end
 
     def interrupt!
@@ -67,7 +67,6 @@ module Ruby64
       when 0x0f then control_b.value
       end
     end
-    alias [] peek
 
     def poke(addr, value)
       case index(addr) & 0x0f
@@ -95,7 +94,6 @@ module Ruby64
       when 0x0f then control_b.value = value
       end
     end
-    alias []= poke
 
     def tod_tenths
       @latched_time = nil
