@@ -2,12 +2,35 @@
 
 module Ruby64
   class Status
-    attr_accessor :value
+    attr_reader :value, :flags, :bitmask, :low_mask, :high_mask
 
     def initialize(flags = [], value: 0x0)
-      @value = value
+      @flags = flags
+
+      @bitmask = create_mask { |f| f.is_a?(Symbol) }
+      @low_mask = create_mask { |f| f.is_a?(Integer) && f.zero? }
+      @high_mask = create_mask { |f| f.is_a?(Integer) && f == 1 }
+
+      self.value = value
+
+      define_accessors!
+    end
+
+    def value=(new_value)
+      @value = (new_value | high_mask) & ~low_mask
+    end
+
+    private
+
+    def create_mask(&predicate)
+      flags.each.with_index.inject(0) do |mask, (flag, i)|
+        mask + (predicate.call(flag) ? 1 << i : 0)
+      end
+    end
+
+    def define_accessors!
       flags.each_with_index do |name, i|
-        next unless name
+        next unless name.is_a?(Symbol)
 
         mask = 1 << i
         define_singleton_method("#{name}=") do |enabled|
@@ -22,14 +45,12 @@ module Ruby64
       end
     end
 
-    private
-
     def update(mask, enabled)
-      @value = if enabled && enabled != 0
-                 @value | mask
-               else
-                 @value & ~mask
-               end
+      self.value = if enabled && enabled != 0
+                     value | mask
+                   else
+                     value & ~mask
+                   end
     end
   end
 end

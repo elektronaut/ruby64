@@ -6,7 +6,7 @@ module Ruby64
     include IntegerHelper
     include InstructionSet
 
-    CPU_FLAGS = [:carry, :zero, :interrupt, :decimal, :break, nil,
+    CPU_FLAGS = [:carry, :zero, :interrupt, :decimal, :break, 1,
                  :overflow, :negative].freeze
 
     attr_reader :memory, :cycles, :instructions

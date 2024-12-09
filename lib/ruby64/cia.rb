@@ -4,7 +4,7 @@ module Ruby64
   # CIA (Complex Interface Adapter) chip
   class CIA < Memory
     INTERRUPT_CONTROL = %i[timer_a timer_b tod serial flag_line].freeze
-    INTERRUPT_STATUS = INTERRUPT_CONTROL + [nil, nil, :interrupt].freeze
+    INTERRUPT_STATUS = INTERRUPT_CONTROL + [0, 0, :interrupt].freeze
     CONTROL_FLAGS = %i[start output output_mode run_mode force_load].freeze
     CONTROL_A_FLAGS = CONTROL_FLAGS + %i[input_mode serial_mode clock_frequency]
     CONTROL_B_FLAGS = CONTROL_FLAGS + %i[count_a input_mode alarm]
@@ -22,7 +22,7 @@ module Ruby64
       @timer_a_latch = @timer_b_latch = 0x0
       @serial_data = 0x0
       @clock_start = Time.now
-      @interrupt_control = Status.new(INTERRUPT_CONTROL)
+      @interrupt_control = Status.new(INTERRUPT_CONTROL + [0, 0, 0])
       @interrupt_status = Status.new(INTERRUPT_STATUS)
       @control_a = Status.new(CONTROL_A_FLAGS)
       @control_b = Status.new(CONTROL_B_FLAGS)
@@ -171,12 +171,12 @@ module Ruby64
     end
 
     def write_interrupt_control(value)
-      if value.bits?(0x80)
-        # Set interrupts based on bits 0-4
-        interrupt_control.value |= (value & 0x1f)
-      else
+      if value.nobits?(0x80)
         # Clear interrupts based on bits 0-4
         interrupt_control.value &= ~(value & 0x1f)
+      else
+        # Set interrupts based on bits 0-4
+        interrupt_control.value |= (value & 0x1f)
       end
     end
 

@@ -1122,7 +1122,7 @@ describe Ruby64::CPU do
       execute([0x40])
     end
 
-    specify { expect(cpu.p).to eq(0x40) }
+    specify { expect(cpu.p).to eq(0x60) }
     specify { expect(cpu.program_counter).to eq(0x2012) }
     specify { expect(cpu.stack_pointer).to eq(0xff) }
     specify { expect(cpu.cycles).to eq(6) }
