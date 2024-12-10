@@ -9,7 +9,7 @@ computer = Ruby64::Computer.new(debug: true)
 
 begin
   loop { computer.cycle! }
-rescue StandardError => e
+rescue StandardError, Interrupt => e
   puts e.inspect
   binding.pry
 ensure

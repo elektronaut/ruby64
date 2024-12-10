@@ -2,6 +2,8 @@
 
 source "https://rubygems.org"
 
+gem "ruby2d"
+
 group :development, :test do
   gem "benchmark-ips"
   gem "pry"

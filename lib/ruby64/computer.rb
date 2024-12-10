@@ -8,7 +8,7 @@ module Ruby64
 
     attr_reader :address_bus, :cpu, :cycles
 
-    def_delegators :address_bus, :vic, :cia1, :cia2, :sid
+    def_delegators :address_bus, :vic, :cia1, :cia2, :sid, :ram
 
     def initialize(debug: false)
       @address_bus = AddressBus.new

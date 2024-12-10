@@ -73,29 +73,34 @@ module Ruby64
   class VIC
     include Addressable
 
-    WIDTH = 504
-    HEIGHT = 312
-
-    attr_reader :address_bus
+    attr_reader :address_bus, :display, :position, :width, :height
 
     def initialize(address_bus = nil, debug: false)
       addressable_at(0xd000, length: 2**10)
       @address_bus = address_bus || AddressBus.new
       @debug = debug
-      @cycles = 0
-      @position = 0
+
+      @width = 504
+      @height = 312
 
       @registers = Memory.new(length: 2**6)
+      @display = Array.new(@width * @height, 0)
+
+      # Initialize default colors
+      @registers.write(0x20, [14, 6, 1, 2, 3, 4, 0, 1, 2, 3, 4, 5, 6, 7, 12])
+
+      @cycles = 0
+      @position = 0
     end
 
     def cycle!
-      log
-      @position = (@position + 8) % (WIDTH * HEIGHT)
+      draw!
+      @position = (@position + 8) % (width * height)
       @cycles += 1
     end
 
     def rasterline
-      @position / WIDTH
+      @position / width
     end
 
     def peek(addr)
@@ -115,12 +120,73 @@ module Ruby64
       @registers.poke(i, value)
     end
 
+    def column
+      (position % width) / 8
+    end
+
+    def yscroll
+      poke(0x11) & 0x07
+    end
+
+    def hblank?
+      !(10..60).include?(column)
+    end
+
+    def vblank?
+      !(16..299).include?(rasterline)
+    end
+
     private
 
-    def log
-      return unless @debug
+    def background_color
+      @registers.peek(0x21)
+    end
 
-      #puts "VIC raster line: #{rasterline}"
+    def foreground_color
+      address_bus.color_ram.peek(0xd800 + character_index) & 0x0f
+    end
+
+    def character_row
+      (rasterline - 56) / 8
+    end
+
+    def character_column
+      column - 16
+    end
+
+    def character_index
+      (character_row * 40) + character_column
+    end
+
+    def display_area?
+      (16...56).include?(column) && (56...256).include?(rasterline)
+    end
+
+    def read_char(screencode, line)
+      address_bus.character_rom.peek(
+        0xd000 + (screencode * 8) + line
+      )
+    end
+
+    def draw!
+      return if vblank? || hblank?
+
+      pixels = if display_area?
+                 screencode = address_bus.peek(0x0400 + character_index)
+                 char = read_char(screencode, (rasterline - 56) % 8)
+                 8.times.map do |i|
+                   char[7 - i] == 1 ? foreground_color : background_color
+                 end
+               else
+                 # Draw border
+                 [@registers.peek(0x20)] * 8
+               end
+
+      pixels.each_with_index { |p, i| display[position + i] = p }
+    end
+
+    def horizontal_cycles
+      width / 8
     end
   end
 end
