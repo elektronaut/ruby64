@@ -22,6 +22,24 @@ palette = [
   "#8A8A8A", "#B3EC91", "#867ADE", "#B3B3B3"
 ].map { |c| Color.new(c) }
 
+def parse_key(event)
+  { "down" => :cursor_v,
+    "right" => :cursor_h,
+    "backspace" => :delete,
+    "left option" => :cbm,
+    "\\" => :"@",
+    "left shift" => :lshift,
+    "right shift" => :rshift }[event.key] || event.key.to_sym
+end
+
+on :key_down do |event|
+  computer.keyboard.press(parse_key(event))
+end
+
+on :key_up do |event|
+  computer.keyboard.release(parse_key(event))
+end
+
 update do
   ((width * height / 8) * speed).to_i.times { computer.cycle! }
 

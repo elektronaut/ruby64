@@ -15,4 +15,3 @@ rescue StandardError, Interrupt => e
 ensure
   puts "Cycles: #{computer.cycles}, instructions: #{computer.cpu.instructions}"
 end
-

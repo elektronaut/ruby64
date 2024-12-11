@@ -7,11 +7,14 @@ module Ruby64
 
     attr_accessor :timer_a, :timer_b, :timer_a_latch, :timer_b_latch
     attr_reader :start, :control_a, :control_b,
-                :interrupt_status, :interrupt_control
+                :interrupt_status, :interrupt_control, :peripheral
 
-    def initialize(start: 0)
+    def initialize(start: 0, peripheral: nil)
       addressable_at(start, length: 2**8)
 
+      @peripheral = peripheral
+      @data_port_a = 0x00
+      @data_port_b = 0x00
       @data_dir_a = 0xff
       @data_dir_b = 0x0
       @timer_a = @timer_b = 0x0
@@ -43,11 +46,22 @@ module Ruby64
       # TODO: Check alarm
     end
 
+    def read_port_a
+      return @data_port_a unless peripheral
+
+      peripheral.read_b(@data_port_a, @data_port_b)
+    end
+
+    def read_port_b
+      return @data_port_b unless peripheral
+
+      peripheral.read_b(@data_port_a, @data_port_b)
+    end
+
     def peek(addr)
       case index(addr) & 0x0f
-      when 0x00, 0x01
-        # TODO: Data Port A, B
-        0
+      when 0x00 then read_port_a
+      when 0x01 then read_port_b
       when 0x02 then @data_dir_a
       when 0x03 then @data_dir_b
       when 0x04 then low_byte(timer_a)
@@ -70,8 +84,8 @@ module Ruby64
 
     def poke(addr, value)
       case index(addr) & 0x0f
-      when 0x00, 0x01
-        # TODO: Data Port A, B
+      when 0x00 then @data_port_a = value
+      when 0x01 then @data_port_b = value
       when 0x02 then @data_dir_a = value
       when 0x03 then @data_dir_b = value
       when 0x04
