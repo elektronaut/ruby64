@@ -13,8 +13,8 @@ module Ruby64
       addressable_at(start, length: 2**8)
 
       @peripheral = peripheral
-      @data_port_a = 0x00
-      @data_port_b = 0x00
+      @data_port_a = 0xff
+      @data_port_b = 0xff
       @data_dir_a = 0xff
       @data_dir_b = 0x0
       @timer_a = @timer_b = 0x0

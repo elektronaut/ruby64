@@ -50,6 +50,12 @@ module Ruby64
       nil
     end
 
+    def inspect
+      "Cycles: #{@cycles}, PC: #{format16(program_counter)}, " \
+      "SP: #{format8(stack_pointer)}, A: #{format8(a)}, X: #{format8(x)}, " \
+      "Y: #{format8(y)}, P: #{format8(p)}"
+    end
+
     private
 
     def cycle
@@ -65,16 +71,18 @@ module Ruby64
       boundary_crossed && cycle
     end
 
-    def handle_interrupt(vector, pre_cycles = 2)
+    def handle_interrupt(vector, brk: false, pre_cycles: 2)
       pre_cycles.times { cycle }
 
-      pc = (program_counter + 1) & 0xffff
+      pc = program_counter
+      pc = (pc + 1) & 0xffff if brk
 
       write_byte(stack_address, high_byte(pc))
       @stack_pointer = (@stack_pointer - 1) & 0xff
       write_byte(stack_address, low_byte(pc))
       @stack_pointer = (@stack_pointer - 1) & 0xff
-      write_byte(stack_address, status.value)
+      write_byte(stack_address,
+                 status.clone.tap { |s| s.break = brk }.value)
       @stack_pointer = (@stack_pointer - 1) & 0xff
       status.interrupt = true
       @program_counter = read_word(vector)

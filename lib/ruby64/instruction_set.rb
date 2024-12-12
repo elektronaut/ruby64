@@ -85,7 +85,7 @@ module Ruby64
     # Interrupt
     def brk(_addr, _value)
       status.break = true
-      handle_interrupt(0xfffe, 1) # unless status.interrupt?
+      handle_interrupt(0xfffe, brk: true, pre_cycles: 1)
       status.break = false
     end
 

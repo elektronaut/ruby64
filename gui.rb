@@ -50,4 +50,8 @@ update do
   end
 end
 
-show
+begin
+  show
+ensure
+  puts computer.cpu.inspect
+end

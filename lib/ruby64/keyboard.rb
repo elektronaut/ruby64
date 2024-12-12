@@ -30,7 +30,6 @@ module Ruby64
     end
 
     def read_b(port_a, _port_b)
-      return 0x00 if port_a.zero?
       return 0xff unless keys.any?
 
       output = 0xff
