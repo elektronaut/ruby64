@@ -1,12 +1,16 @@
 # frozen_string_literal: true
 
+require "ruby64/instruction_set/illegal"
+
 module Ruby64
   # http://www.6502.org/tutorials/6502opcodes.html
   # http://www.e-tradition.net/bytes/6502/6502_instruction_set.html
   module InstructionSet
+    include InstructionSet::Illegal
+
     # Add with carry.
     def adc(_addr, value)
-      v = value.call
+      v = resolve(value)
       result = a + v + status.carry
       status.zero = result.nobits?(0xff)
 
@@ -27,13 +31,13 @@ module Ruby64
 
     # And (with accumulator)
     def and(_addr, value)
-      @a &= value.call
+      @a &= resolve(value)
       update_number_flags(@a)
     end
 
     # Arithmetic shift left
     def asl(addr, value)
-      v = value.call
+      v = resolve(value)
       result = (v << 1) & 0xff
       status.carry = v[7]
       cycle { write_byte(addr, result) }
@@ -57,7 +61,7 @@ module Ruby64
 
     # Bit test
     def bit(_addr, value)
-      v = value.call
+      v = resolve(value)
       status.value = ((status.value & 0b00111111) +
                       (v & 0b11000000)).to_i
       status.zero = (a & v).nobits?(0xff)
@@ -117,28 +121,28 @@ module Ruby64
 
     # Compare (with accumulator)
     def cmp(_addr, value)
-      v = value.call
+      v = resolve(value)
       status.carry = (@a >= v)
       update_number_flags(@a - v)
     end
 
     # Compare with X
     def cpx(_addr, value)
-      v = value.call
+      v = resolve(value)
       status.carry = @x >= v
       update_number_flags(@x - v)
     end
 
     # Compare with Y
     def cpy(_addr, value)
-      v = value.call
+      v = resolve(value)
       status.carry = @y >= v
       update_number_flags(@y - v)
     end
 
     # Decrement
     def dec(addr, value)
-      v = cycle { value.call - 1 } & 0xff
+      v = cycle { resolve(value) - 1 } & 0xff
       write_byte(addr, v)
       update_number_flags(v)
     end
@@ -157,13 +161,13 @@ module Ruby64
 
     # Exclusive or (with accumulator)
     def eor(_addr, value)
-      @a = (@a ^ value.call) & 0xff
+      @a = (@a ^ resolve(value)) & 0xff
       update_number_flags(@a)
     end
 
     # Increment
     def inc(addr, value)
-      v = cycle { (value.call + 1) & 0xff }
+      v = cycle { (resolve(value) + 1) & 0xff }
       write_byte(addr, v)
       update_number_flags(v)
     end
@@ -200,25 +204,25 @@ module Ruby64
 
     # Load accumulator
     def lda(_addr, value)
-      @a = value.call
+      @a = resolve(value)
       update_number_flags(@a)
     end
 
     # Load X
     def ldx(_addr, value)
-      @x = value.call
+      @x = resolve(value)
       update_number_flags(@x)
     end
 
     # Load Y
     def ldy(_addr, value)
-      @y = value.call
+      @y = resolve(value)
       update_number_flags(@y)
     end
 
     # Logical shift right
     def lsr(addr, value)
-      v = value.call
+      v = resolve(value)
       result = (v >> 1) & 0xff
       status.carry = v[0]
       cycle { write_byte(addr, result) }
@@ -227,12 +231,12 @@ module Ruby64
 
     # No operation
     def nop(_addr, _value)
-      cycle { nil }
+      cycle
     end
 
     # Or with accumulator
     def ora(_addr, value)
-      @a |= value.call
+      @a |= resolve(value)
       update_number_flags(@a)
     end
 
@@ -259,7 +263,7 @@ module Ruby64
 
     # Rotate left
     def rol(addr, value)
-      v = value.call
+      v = resolve(value)
       result = ((v << 1) + status.carry) & 0xff
       status.carry = v[7]
       cycle { write_byte(addr, result) }
@@ -268,7 +272,7 @@ module Ruby64
 
     # Rotate right
     def ror(addr, value)
-      v = value.call
+      v = resolve(value)
       result = ((v >> 1) + (status.carry? ? 0x80 : 0)) & 0xff
       status.carry = v[0]
       cycle { write_byte(addr, result) }
@@ -294,7 +298,7 @@ module Ruby64
 
     # Subtract with carry
     def sbc(_addr, value)
-      v = value.call
+      v = resolve(value)
       v_inv = ~v & 0xff
       carry = status.carry? ? 0 : -1
 
@@ -386,6 +390,10 @@ module Ruby64
       cycle { @program_counter = addr }
     end
 
+    def resolve(value)
+      value.is_a?(Proc) ? value.call : value
+    end
+
     def stack_pull
       cycle { @stack_pointer = (@stack_pointer + 1) & 0xff }
       read_byte(stack_address)
@@ -411,6 +419,7 @@ module Ruby64
     def update_number_flags(value)
       status.zero = value.zero?
       status.negative = value.anybits?(0x80)
+      value
     end
   end
 end

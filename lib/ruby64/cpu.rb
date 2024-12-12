@@ -9,7 +9,7 @@ module Ruby64
     include IntegerHelper
     include InstructionSet
 
-    attr_reader :memory, :cycles, :instructions
+    attr_reader :memory, :cycles, :instructions, :boundary_crossed
     attr_accessor :program_counter, :stack_pointer, :status, :a, :x, :y,
                   :nmi, :irq
 
@@ -57,6 +57,12 @@ module Ruby64
       result = yield if block_given?
       @cycles += 1
       result
+    end
+
+    def extra_cycle(instruction)
+      return cycle unless instruction.boundary_cycle?
+
+      boundary_crossed && cycle
     end
 
     def handle_interrupt(vector, pre_cycles = 2)
@@ -122,12 +128,6 @@ module Ruby64
       @a = @x = @y = 0x0
     end
 
-    def extra_cycle(instruction, boundary_condition)
-      return cycle unless instruction.boundary_cycle?
-
-      boundary_condition && cycle
-    end
-
     def read_address(instruction, operand)
       case instruction.addressing_mode
       when :implied, :immediate
@@ -144,11 +144,13 @@ module Ruby64
         cycle { (operand + @y) & 0xff }
       when :absolute_x
         # Do an extra cycle if page boundary is crossed
-        extra_cycle(instruction, high_byte(operand + @x) != high_byte(operand))
+        @boundary_crossed = high_byte(operand + @x) != high_byte(operand)
+        extra_cycle(instruction)
         (operand + @x) & 0xffff
       when :absolute_y
+        @boundary_crossed = high_byte(operand + @y) != high_byte(operand)
         # Do an extra cycle if page boundary is crossed
-        extra_cycle(instruction, high_byte(operand + @y) != high_byte(operand))
+        extra_cycle(instruction)
         (operand + @y) & 0xffff
       when :indirect
         # This is only used for JMP. There's no carry associated, so an
@@ -166,8 +168,9 @@ module Ruby64
         read_zeropage_word(operand + @x)
       when :indirect_y
         value = read_zeropage_word(operand)
+        @boundary_crossed = ((value & 0xff) + y) > 0xff
         # Do an extra cycle if page boundary is crossed
-        extra_cycle(instruction, ((value & 0xff) + y) > 0xff)
+        extra_cycle(instruction)
         (value + y) & 0xffff
       end
     end
@@ -205,6 +208,7 @@ module Ruby64
       if nmi || irq
         handle_interrupts
       else
+        @boundary_crossed = false
         @instruction = read_instruction
         raise InvalidOpcodeError unless @instruction
 
