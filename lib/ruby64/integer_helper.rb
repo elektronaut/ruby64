@@ -11,6 +11,14 @@ module Ruby64
       (((number & 0xf0) >> 4) * 10) + (number & 0x0f)
     end
 
+    def format8(number)
+      "0x#{number.to_s(16).rjust(2, '0')}"
+    end
+
+    def format16(number)
+      "0x#{number.to_s(16).rjust(4, '0')}"
+    end
+
     def high_byte(number)
       (number >> 8) & 0xff
     end

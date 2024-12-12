@@ -2,6 +2,9 @@
 
 module Ruby64
   class CPU
+    STATUS_FLAGS = [:carry, :zero, :interrupt, :decimal, :break, 1,
+                    :overflow, :negative].freeze
+
     class InvalidOpcodeError < StandardError; end
     include IntegerHelper
     include InstructionSet
@@ -13,8 +16,7 @@ module Ruby64
     def initialize(memory = nil, debug: false)
       @debug = debug
       @memory = memory || Memory.new
-      @status = Status.new([:carry, :zero, :interrupt, :decimal, :break, 1,
-                            :overflow, :negative], value: 0b00100000)
+      @status = Status.new(STATUS_FLAGS, value: 0b00100000)
       reset_registers
 
       @nmi = @irq = false
@@ -59,11 +61,14 @@ module Ruby64
 
     def handle_interrupt(vector, pre_cycles = 2)
       pre_cycles.times { cycle }
-      write_byte(stack_address, high_byte(@program_counter))
+
+      pc = (program_counter + 1) & 0xffff
+
+      write_byte(stack_address, high_byte(pc))
       @stack_pointer = (@stack_pointer - 1) & 0xff
-      write_byte(stack_address, low_byte(@program_counter))
+      write_byte(stack_address, low_byte(pc))
       @stack_pointer = (@stack_pointer - 1) & 0xff
-      write_byte(stack_address, status.value & ~0b00010000)
+      write_byte(stack_address, status.value)
       @stack_pointer = (@stack_pointer - 1) & 0xff
       status.interrupt = true
       @program_counter = read_word(vector)
@@ -87,20 +92,25 @@ module Ruby64
 
     def read_word(addr)
       uint16(read_byte(addr),
-             read_byte(addr + 1))
+             read_byte((addr + 1) & 0xffff))
+    end
+
+    def read_zeropage_word(addr)
+      uint16(read_byte(addr & 0xff),
+             read_byte((addr + 1) & 0xff))
     end
 
     def read_instruction
-      Instruction.find(memory[@program_counter])
+      Instruction.find(memory[program_counter])
     end
 
     def read_operand(instruction)
       return [] unless instruction.operand?
 
       if instruction.operand_length == 2
-        read_word(@program_counter)
+        read_word(program_counter)
       else
-        read_byte(@program_counter)
+        read_byte(program_counter)
       end
     end
 
@@ -112,6 +122,12 @@ module Ruby64
       @a = @x = @y = 0x0
     end
 
+    def extra_cycle(instruction, boundary_condition)
+      return cycle unless instruction.boundary_cycle?
+
+      boundary_condition && cycle
+    end
+
     def read_address(instruction, operand)
       case instruction.addressing_mode
       when :implied, :immediate
@@ -119,21 +135,21 @@ module Ruby64
       when :accumulator
         :accumulator
       when :relative
-        @program_counter + signed_int8(operand) + 1
+        (@program_counter + signed_int8(operand) + 1) & 0xffff
       when :zeropage, :absolute
         operand
       when :zeropage_x
-        cycle { operand + @x }
+        cycle { (operand + @x) & 0xff }
       when :zeropage_y
-        cycle { operand + @y }
+        cycle { (operand + @y) & 0xff }
       when :absolute_x
         # Do an extra cycle if page boundary is crossed
-        cycle if high_byte(operand + @x) != high_byte(operand)
-        operand + @x
+        extra_cycle(instruction, high_byte(operand + @x) != high_byte(operand))
+        (operand + @x) & 0xffff
       when :absolute_y
         # Do an extra cycle if page boundary is crossed
-        cycle if high_byte(operand + @y) != high_byte(operand)
-        operand + @y
+        extra_cycle(instruction, high_byte(operand + @y) != high_byte(operand))
+        (operand + @y) & 0xffff
       when :indirect
         # This is only used for JMP. There's no carry associated, so an
         # indirect jump to $30FF will wrap around on the same page and read
@@ -147,14 +163,12 @@ module Ruby64
         )
       when :indirect_x
         cycle
-        uint16(
-          read_byte(operand + @x),
-          read_byte(operand + @x + 1) # Wrap around low byte
-        )
+        read_zeropage_word(operand + @x)
       when :indirect_y
+        value = read_zeropage_word(operand)
         # Do an extra cycle if page boundary is crossed
-        cycle if operand == 0xff
-        read_word(operand) + y
+        extra_cycle(instruction, ((value & 0xff) + y) > 0xff)
+        (value + y) & 0xffff
       end
     end
 
@@ -171,8 +185,8 @@ module Ruby64
       end
     end
 
-    def stack_address
-      uint16(stack_pointer, 0x01)
+    def stack_address(offset = 0)
+      uint16((stack_pointer + offset) & 0xff, 0x01)
     end
 
     def log(instruction, operand, address)
@@ -194,19 +208,20 @@ module Ruby64
         @instruction = read_instruction
         raise InvalidOpcodeError unless @instruction
 
-        @program_counter += 1
+        @program_counter = (@program_counter + 1) & 0xffff
         @cycles += 1
 
         operand = read_operand(@instruction)
         address = read_address(@instruction, operand)
-        @program_counter += @instruction.operand_length
+
+        @program_counter = (@program_counter + @instruction.operand_length) &
+                           0xffff
 
         log(@instruction, operand, address)
 
         # Run instruction and update processor status
         send(
           @instruction.name,
-          @instruction,
           address,
           -> { realize_value(@instruction, operand, address) }
         )

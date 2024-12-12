@@ -412,29 +412,17 @@ describe Ruby64::CPU do
   end
 
   describe "BRK" do
-    let(:interrupt) { false }
-
     before do
       memory.write(0xfffe, [0x40, 0x05])
-      cpu.status.interrupt = interrupt
       execute([0x00])
     end
 
     specify { expect(cpu.cycles).to eq(7) }
     specify { expect(cpu.stack_pointer).to eq(0xfc) }
-    specify { expect(cpu.status.break?).to be(true) }
+    specify { expect(cpu.status.break?).to be(false) }
     specify { expect(cpu.status.interrupt?).to be(true) }
     specify { expect(cpu.irq).to be(false) }
     specify { expect(cpu.program_counter).to eq(0x0540) }
-
-    describe "when the interrupt flag is set" do
-      let(:interrupt) { true }
-
-      specify { expect(cpu.cycles).to eq(1) }
-      specify { expect(cpu.stack_pointer).to eq(0xff) }
-      specify { expect(cpu.program_counter).to eq(0xc001) }
-      specify { expect(cpu.irq).to be(false) }
-    end
   end
 
   describe "BVC" do
@@ -766,8 +754,21 @@ describe Ruby64::CPU do
 
     specify { expect(cpu.cycles).to eq(6) }
     specify { expect(cpu.program_counter).to eq(0x2010) }
-    specify { expect(memory.peek16(0x01fe)).to eq(0xc003) }
+    specify { expect(memory.peek16(0x01fe)).to eq(0xc002) }
     specify { expect(cpu.stack_pointer).to eq(0xfd) }
+
+    context "when executing inside the stack" do
+      before do
+        cpu.program_counter = 0x017b
+        cpu.stack_pointer = 0x7d
+        memory.write(0x0155, [0xad])
+        memory.write(0x017b, [0x20, 0x55, 0x13])
+        cpu.step!
+      end
+
+      specify { expect(cpu.program_counter).to eq(0x0155) }
+      specify { expect(cpu.stack_pointer).to eq(0x7b) }
+    end
   end
 
   describe "LDA" do
@@ -788,20 +789,6 @@ describe Ruby64::CPU do
       end
 
       specify { expect(cpu.cycles).to eq(3) }
-
-      it "sets the accumulator" do
-        expect(cpu.a).to eq(0x40)
-      end
-    end
-
-    context "when zeropage_x addressing" do
-      before do
-        cpu.x = 0x05
-        memory.write(0x25, [0x40])
-        execute([0xb5, 0x20])
-      end
-
-      specify { expect(cpu.cycles).to eq(4) }
 
       it "sets the accumulator" do
         expect(cpu.a).to eq(0x40)
@@ -865,16 +852,17 @@ describe Ruby64::CPU do
 
     context "when indirect_x addressing" do
       before do
-        cpu.x = 0x03
-        memory.write(0x2110, [0x40])
-        memory.write(0x05, [0x10, 0x21])
-        execute([0xa1, 0x02])
+        cpu.x = 0x8e
+        memory.write(0x5b18, [0x45])
+        memory.write(0xb, [0x8a])
+        memory.write(0x3e, [0x18, 0x5b])
+        execute([0xa1, 0xb0, 0xa1])
       end
 
       specify { expect(cpu.cycles).to eq(6) }
 
       it "sets the accumulator" do
-        expect(cpu.a).to eq(0x40)
+        expect(cpu.a).to eq(0x45)
       end
     end
 
@@ -895,16 +883,31 @@ describe Ruby64::CPU do
 
     context "when indirect_y addressing at page boundary" do
       before do
-        cpu.y = 0x03
-        memory.write(0x2113, [0x40])
-        memory.write(0xff, [0x10, 0x21])
-        execute([0xb1, 0xff])
+        cpu.y = 219
+        memory.write(0xe940, [0xc3])
+        memory.write(0xe840, [0x1f])
+        memory.write(0xff, [0x65])
+        memory.write(0x0, [0xe8])
+        execute([0xb1, 0xff, 0x87])
       end
 
       specify { expect(cpu.cycles).to eq(6) }
 
       it "sets the accumulator" do
-        expect(cpu.a).to eq(0x40)
+        expect(cpu.a).to eq(0xc3)
+      end
+    end
+
+    context "when zeropage_x addressing" do
+      before do
+        cpu.x = 0x93
+        memory.write(0xc1, [0x65])
+        memory.write(0x54, [0x7c])
+        execute([0xb5, 0xc1, 0x5d])
+      end
+
+      it "sets the accumulator" do
+        expect(cpu.a).to eq(0x7c)
       end
     end
   end
@@ -1006,7 +1009,7 @@ describe Ruby64::CPU do
     end
 
     specify { expect(cpu.cycles).to eq(3) }
-    specify { expect(memory.peek(0x01ff)).to eq(0b10101010) }
+    specify { expect(memory.peek(0x01ff)).to eq(0b10111010) }
     specify { expect(cpu.stack_pointer).to eq(0xfe) }
   end
 
@@ -1136,7 +1139,7 @@ describe Ruby64::CPU do
       execute([0x60])
     end
 
-    specify { expect(cpu.program_counter).to eq(0x2012) }
+    specify { expect(cpu.program_counter).to eq(0x2013) }
     specify { expect(cpu.stack_pointer).to eq(0xff) }
     specify { expect(cpu.cycles).to eq(6) }
   end
@@ -1148,7 +1151,7 @@ describe Ruby64::CPU do
         execute([0xe9, 0x01])
       end
 
-      specify { expect(cpu.a).to eq(0x04) }
+      specify { expect(cpu.a).to eq(0x03) }
       specify { expect(cpu.status.carry?).to be(true) }
       specify { expect(cpu.status.overflow?).to be(false) }
       specify { expect(cpu.cycles).to eq(2) }
@@ -1161,7 +1164,7 @@ describe Ruby64::CPU do
         execute([0xe9, 0x01])
       end
 
-      specify { expect(cpu.a).to eq(0x03) }
+      specify { expect(cpu.a).to eq(0x04) }
       specify { expect(cpu.status.carry?).to be(true) }
       specify { expect(cpu.status.overflow?).to be(false) }
     end
@@ -1172,7 +1175,7 @@ describe Ruby64::CPU do
         execute([0xe9, 0x01])
       end
 
-      specify { expect(cpu.a).to eq(0xff) }
+      specify { expect(cpu.a).to eq(0xfe) }
       specify { expect(cpu.status.carry?).to be(false) }
       specify { expect(cpu.status.overflow?).to be(false) }
     end
@@ -1196,7 +1199,7 @@ describe Ruby64::CPU do
     describe "subtracting a value" do
       before { execute([0xe9, 0x33]) }
 
-      specify { expect(cpu.a).to eq(0x22) }
+      specify { expect(cpu.a).to eq(0x21) }
       specify { expect(cpu.status.carry?).to be(true) }
     end
 
@@ -1206,7 +1209,7 @@ describe Ruby64::CPU do
         execute([0xe9, 0x01])
       end
 
-      specify { expect(cpu.a).to eq(0x53) }
+      specify { expect(cpu.a).to eq(0x54) }
       specify { expect(cpu.status.carry?).to be(true) }
     end
 
@@ -1216,7 +1219,7 @@ describe Ruby64::CPU do
         execute([0xe9, 0x01])
       end
 
-      specify { expect(cpu.a).to eq(0x99) }
+      specify { expect(cpu.a).to eq(0x98) }
       specify { expect(cpu.status.carry?).to be(false) }
       specify { expect(cpu.status.overflow?).to be(false) }
     end

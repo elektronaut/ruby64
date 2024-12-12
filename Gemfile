@@ -6,7 +6,9 @@ gem "ruby2d"
 
 group :development, :test do
   gem "benchmark-ips"
+  gem "minitest"
   gem "pry"
+  gem "rake"
   gem "rspec"
   gem "rubocop"
   gem "rubocop-rspec"
