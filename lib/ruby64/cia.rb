@@ -88,14 +88,10 @@ module Ruby64
       when 0x01 then @data_port_b = value
       when 0x02 then @data_dir_a = value
       when 0x03 then @data_dir_b = value
-      when 0x04
-        @timer_a_latch = uint16(value, high_byte(@timer_a_latch))
-      when 0x05
-        @timer_a_latch = uint16(low_byte(@timer_a_latch), value)
-      when 0x06
-        @timer_b_latch = uint16(value, high_byte(@timer_b_latch))
-      when 0x07
-        @timer_b_latch = uint16(low_byte(@timer_b_latch), value)
+      when 0x04 then @timer_a_latch = uint16(value, high_byte(@timer_a_latch))
+      when 0x05 then @timer_a_latch = uint16(low_byte(@timer_a_latch), value)
+      when 0x06 then @timer_b_latch = uint16(value, high_byte(@timer_b_latch))
+      when 0x07 then @timer_b_latch = uint16(low_byte(@timer_b_latch), value)
       when 0x08 then write_tod_or_alarm({ tenths: bcd_to_i(value) })
       when 0x09 then write_tod_or_alarm({ seconds: bcd_to_i(value) })
       when 0x0a then write_tod_or_alarm({ minutes: bcd_to_i(value) })

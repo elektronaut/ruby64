@@ -73,11 +73,12 @@ module Ruby64
   class VIC
     include Addressable
 
-    attr_reader :address_bus, :display, :position, :width, :height
+    attr_reader :address_bus, :display, :position, :width, :height, :vic_bank
 
     def initialize(address_bus = nil, debug: false)
       addressable_at(0xd000, length: 2**10)
       @address_bus = address_bus || AddressBus.new
+      @vic_bank = VICBank.new(@address_bus)
       @debug = debug
 
       @width = 504
@@ -143,7 +144,7 @@ module Ruby64
     end
 
     def foreground_color
-      address_bus.color_ram.peek(0xd800 + character_index) & 0x0f
+      vic_bank.peek_color(character_index)
     end
 
     def character_row
@@ -163,16 +164,14 @@ module Ruby64
     end
 
     def read_char(screencode, line)
-      address_bus.character_rom.peek(
-        0xd000 + (screencode * 8) + line
-      )
+      vic_bank.peek(0x1000 + (screencode * 8) + line)
     end
 
     def draw!
       return if vblank? || hblank?
 
       pixels = if display_area?
-                 screencode = address_bus.peek(0x0400 + character_index)
+                 screencode = vic_bank.peek(0x0400 + character_index)
                  char = read_char(screencode, (rasterline - 56) % 8)
                  8.times.map do |i|
                    char[7 - i] == 1 ? foreground_color : background_color
