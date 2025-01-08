@@ -105,8 +105,6 @@ module Ruby64
     end
 
     def peek(addr)
-      # Access rasterline first at 1919830
-
       i = index(addr) % (2**6)
       case i
       when 0x12 then rasterline
@@ -148,6 +146,7 @@ module Ruby64
     end
 
     def character_row
+      # TODO: scroll
       (rasterline - 56) / 8
     end
 
@@ -164,14 +163,15 @@ module Ruby64
     end
 
     def read_char(screencode, line)
-      vic_bank.peek(0x1000 + (screencode * 8) + line)
+      char_offset = (@registers.peek(0x18) & 0b1110) * 0x400
+      vic_bank.peek(char_offset + (screencode * 8) + line)
     end
 
     def draw!
       return if vblank? || hblank?
 
       pixels = if display_area?
-                 screencode = vic_bank.peek(0x0400 + character_index)
+                 screencode = video_matrix(character_index)
                  char = read_char(screencode, (rasterline - 56) % 8)
                  8.times.map do |i|
                    char[7 - i] == 1 ? foreground_color : background_color
@@ -186,6 +186,18 @@ module Ruby64
 
     def horizontal_cycles
       width / 8
+    end
+
+    def horizontal_scroll
+      @registers.peek(0x16) & 0b0111
+    end
+
+    def vertical_scroll
+      @registers.peek(0x11) & 0b0111
+    end
+
+    def video_matrix(index)
+      vic_bank.peek(((@registers.peek(0x0018) >> 4) * 0x400) + index)
     end
   end
 end
