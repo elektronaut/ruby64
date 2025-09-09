@@ -8,8 +8,8 @@ require "ruby2d"
 
 computer = Ruby64::Computer.new(debug: false)
 
-width = computer.vic.width
-height = computer.vic.height
+width = 384
+height = 272
 scale = 2
 speed = 1
 
@@ -43,10 +43,13 @@ end
 update do
   ((width * height / 8) * speed).to_i.times { computer.cycle! }
 
-  computer.vic.display.each_with_index do |c, pos|
-    x = (pos % width) * scale
-    y = (pos / width) * scale
-    Pixel.draw(x:, y:, size: scale, color: palette[c])
+  (0...height).each do |row|
+    (0...width).each do |col|
+      c = computer.vic.display[((row + 20) * computer.vic.width) + (col + 96)]
+      x = col * scale
+      y = row * scale
+      Pixel.draw(x:, y:, size: scale, color: palette[c])
+    end
   end
 end
 
