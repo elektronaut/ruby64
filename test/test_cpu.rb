@@ -37,6 +37,7 @@ class TestCPU < Minitest::Test
   def assert_status(expected_value, actual)
     expectation = Ruby64::Status.new(Ruby64::CPU::STATUS_FLAGS,
                                      value: expected_value)
+
     assert_equal(expectation.carry, actual.carry, "status: carry")
     assert_equal(expectation.zero, actual.zero, "status: zero")
     assert_equal(expectation.interrupt, actual.interrupt, "status: interrupt")
@@ -73,10 +74,12 @@ class TestCPU < Minitest::Test
     define_method "test_#{i}_#{test['name'].gsub(' ', '_')}" do
       cpu = setup_cpu(test["initial"])
       cpu.step!
+
       assert_registers(test["final"], cpu)
       if TEST_CYCLES
         assert_equal(test["cycles"].length, cpu.cycles, "Cycle count")
       end
+
       assert_memory(test["final"]["ram"], cpu.memory)
     end
   end

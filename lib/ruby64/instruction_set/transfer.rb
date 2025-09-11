@@ -3,7 +3,7 @@
 module Ruby64
   module InstructionSet
     module Transfer
-      #+begin_src ruby
+      # +begin_src ruby
       # Load accumulator with memory.
       #
       # Opcodes:

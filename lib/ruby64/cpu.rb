@@ -52,8 +52,8 @@ module Ruby64
 
     def inspect
       "Cycles: #{@cycles}, PC: #{format16(program_counter)}, " \
-      "SP: #{format8(stack_pointer)}, A: #{format8(a)}, X: #{format8(x)}, " \
-      "Y: #{format8(y)}, P: #{format8(p)}"
+        "SP: #{format8(stack_pointer)}, A: #{format8(a)}, X: #{format8(x)}, " \
+        "Y: #{format8(y)}, P: #{format8(p)}"
     end
 
     private

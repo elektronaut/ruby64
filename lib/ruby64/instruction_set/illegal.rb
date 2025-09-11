@@ -100,7 +100,7 @@ module Ruby64
       #
       # Opcodes:
       #   $02, $12, $22, $32, $42, $52, $62, $72, $92, $B2, $D2, $F2
-      def jam(addr, value)
+      def jam(_addr, _value)
         # TODO: Handle jam
         # It is possible to implement with loop { cycle }, but makes
         # testing problematic.

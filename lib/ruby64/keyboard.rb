@@ -35,7 +35,7 @@ module Ruby64
       output = 0xff
 
       matrix.each_with_index do |row, a|
-        next unless (port_a[a]).zero?
+        next unless port_a[a].zero?
 
         row.each_with_index do |key, b|
           output -= (1 << b) if keys.include?(key)
