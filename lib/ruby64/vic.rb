@@ -72,6 +72,7 @@ module Ruby64
   # $D040-$D3FF: Repeat $D0000 to $D03F every 64 bytes
   class VIC
     include Addressable
+    include IntegerHelper
 
     attr_reader :address_bus, :display, :position, :width, :height, :vic_bank
 
@@ -87,27 +88,40 @@ module Ruby64
       @registers = Memory.new(length: 2**6)
       @display = Array.new(@width * @height, 0)
 
-      # Initialize default colors
-      @registers.write(0x20, [14, 6, 1, 2, 3, 4, 0, 1, 2, 3, 4, 5, 6, 7, 12])
-
       @cycles = 0
       @position = 0
+      @interrupted = false
+
+      # Initialize default colors
+      @registers.write(0x20, [14, 6, 1, 2, 3, 4, 0, 1, 2, 3, 4, 5, 6, 7, 12])
+      @registers.write(0x12, [0])    # IRQ rasterline target
+      @registers.write(0x19, [0, 0]) # IRQ flags
     end
 
     def cycle!
+      @interrupted = false
+      check_raster_irq! if beginning_of_line?
+      fetch_character_data! if dma_active?
+
       draw!
+
       @position = (@position + 8) % (width * height)
       @cycles += 1
     end
 
-    def rasterline
-      @position / width
+    def interrupt!
+      @interrupted = true
+    end
+
+    def interrupted?
+      @interrupted
     end
 
     def peek(addr)
       i = index(addr) % (2**6)
       case i
-      when 0x12 then rasterline
+      when 0x11 then (@registers.peek(i) & 0x7f) | ((rasterline & 0x100) >> 1)
+      when 0x12 then rasterline & 0xff
       when 0x20..0x2e then @registers.peek(i) | 0xf0 # Color registers
       when 0x2f..0x3f then 0xff                      # Not in use
       else @registers.peek(i)
@@ -115,16 +129,27 @@ module Ruby64
     end
 
     def poke(addr, value)
-      i = index(addr) % (2**5)
-      @registers.poke(i, value)
+      i = index(addr) % (2**6)
+      case i
+      when 0x19 # IRQ flags - write 1 to clear
+        @registers.poke(i, @registers.peek(i) & ~value)
+      when 0x1a # IRQ mask
+        @registers.poke(i, value & 0x0f)
+      else
+        @registers.poke(i, value)
+      end
     end
 
     def column
       (position % width) / 8
     end
 
-    def yscroll
-      poke(0x11) & 0x07
+    def rasterline
+      position / width
+    end
+
+    def dma_active?
+      bad_line? && rasterline_cycle >= 15 && rasterline_cycle <= 54
     end
 
     def hblank?
@@ -136,6 +161,10 @@ module Ruby64
     end
 
     private
+
+    def beginning_of_line?
+      (position % width).zero?
+    end
 
     def background_color
       @registers.peek(0x21)
@@ -188,16 +217,65 @@ module Ruby64
       width / 8
     end
 
-    def horizontal_scroll
+    def video_matrix(index)
+      vic_bank.peek(((@registers.peek(0x0018) >> 4) * 0x400) + index)
+    end
+
+    def check_raster_irq!
+      return unless rasterline == irq_raster_target
+
+      # Set raster IRQ flag
+      @registers.poke(0x19, @registers.peek(0x19) | 0x01)
+
+      # Trigger interrupt if enabled
+      interrupt! if @registers.peek(0x1a).anybits?(0x01)
+    end
+
+    def irq_raster_target
+      uint16(@registers.peek(0x12),
+             (@registers.peek(0x11) & 0x80) >> 7)
+    end
+
+    def bad_line?
+      return false unless display_enabled?
+      return false unless text_mode?
+      return false if rasterline < 48 || rasterline > 247
+
+      if @registers.peek(0x11).anybits?(0x08)
+        (rasterline - 48) % 8 == yscroll
+      else
+        (rasterline - 48) % 8 == yscroll && rasterline >= 55
+      end
+    end
+
+    def display_enabled?
+      @registers.peek(0x11).anybits?(0x10)
+    end
+
+    def text_mode?
+      @registers.peek(0x11).nobits?(0x20) && @registers.peek(0x16).nobits?(0x10)
+    end
+
+    def fetch_character_data!
+      char_index = rasterline_cycle - 15
+
+      # Screen memory read
+      vic_bank.peek(((@registers.peek(0x18) >> 4) * 0x400) + char_index)
+
+      # Color memory read
+      @address_bus.peek(0xd800 + char_index)
+    end
+
+    def rasterline_cycle
+      ((position / 8) % horizontal_cycles) + 1
+    end
+
+    def xscroll
       @registers.peek(0x16) & 0b0111
     end
 
-    def vertical_scroll
+    def yscroll
       @registers.peek(0x11) & 0b0111
-    end
-
-    def video_matrix(index)
-      vic_bank.peek(((@registers.peek(0x0018) >> 4) * 0x400) + index)
     end
   end
 end

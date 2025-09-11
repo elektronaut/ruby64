@@ -20,9 +20,10 @@ module Ruby64
       vic.cycle!
       cia1.cycle!
       cia2.cycle!
-      cpu.irq = true if cia1.interrupted?
+      cpu.irq = true if cia1.interrupted? || vic.interrupted?
       cpu.nmi = true if cia2.interrupted?
-      cpu.cycle!
+      cpu.cycle! unless vic.dma_active?
+
       @cycles += 1
     end
   end
