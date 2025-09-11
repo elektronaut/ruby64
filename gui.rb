@@ -8,6 +8,15 @@ require "ruby2d"
 
 computer = Ruby64::Computer.new(debug: false)
 
+if ARGV[0] && File.exist?(ARGV[0])
+  prg_data = File.read(ARGV[0], mode: "rb").bytes
+
+  computer.on_init do
+    load_addr = computer.load_prg(prg_data)
+    puts "Loaded at $#{load_addr.to_s(16).upcase}"
+  end
+end
+
 width = 384
 height = 272
 scale = 2

@@ -29,4 +29,13 @@ RSpec.describe Ruby64::Computer do
       expect(computer.cpu.cycles - initial_cpu_cycles).to be < 20
     end
   end
+
+  describe "#load_prg" do
+    subject(:load_addr) { computer.load_prg(prg_data) }
+
+    let(:prg_data) { [0x01, 0x08, 0x1d, 0x08, 0x0a, 0x00, 0x99, 0x20] }
+
+    specify { expect(load_addr).to eq(0x0801) }
+    specify { expect(computer.ram.read(load_addr, 6)).to eq(prg_data[2..]) }
+  end
 end

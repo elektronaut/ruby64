@@ -4,6 +4,7 @@ require "forwardable"
 
 module Ruby64
   class Computer
+    include IntegerHelper
     extend Forwardable
 
     attr_reader :address_bus, :cpu, :cycles
@@ -14,9 +15,12 @@ module Ruby64
       @address_bus = AddressBus.new
       @cpu = CPU.new(@address_bus, debug:)
       @cycles = 0
+      @init_handlers = []
     end
 
     def cycle!
+      handle_init
+
       vic.cycle!
       cia1.cycle!
       cia2.cycle!
@@ -25,6 +29,36 @@ module Ruby64
       cpu.cycle! unless vic.dma_active?
 
       @cycles += 1
+    end
+
+    def load_prg(data)
+      uint16(data[0], data[1]).tap do |load_addr|
+        ram.write(load_addr, data[2..])
+      end
+    end
+
+    def on_init(&block)
+      if booting?
+        @init_handlers << block
+      else
+        block.call
+      end
+    end
+
+    private
+
+    def booting?
+      @cycles < init_threshold
+    end
+
+    def handle_init
+      return unless cycles == init_threshold
+
+      @init_handlers.each(&:call)
+    end
+
+    def init_threshold
+      2_138_332
     end
   end
 end
