@@ -58,7 +58,7 @@ module Ruby64
     end
 
     def init_threshold
-      2_138_332
+      2_500_000
     end
   end
 end
