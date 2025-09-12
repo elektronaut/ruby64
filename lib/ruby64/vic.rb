@@ -92,9 +92,15 @@ module Ruby64
       @position = 0
       @interrupted = false
 
+      @character_buffer = Array.new(40, 0)
+      @color_buffer = Array.new(40, 0)
+
       # Initialize default colors
       @registers.write(0x20, [14, 6, 1, 2, 3, 4, 0, 1, 2, 3, 4, 5, 6, 7, 12])
-      @registers.write(0x12, [0])    # IRQ rasterline target
+
+      # Initialize VIC control registers with C64 defaults
+      @registers.write(0x11, [0x1b, 0]) # $D011: DEN=1, RSEL=1, YSCROLL=3
+      @registers.write(0x16, [0xc8]) # $D016: Text mode, XSCROLL=0
       @registers.write(0x19, [0, 0]) # IRQ flags
     end
 
@@ -149,7 +155,7 @@ module Ruby64
     end
 
     def dma_active?
-      bad_line? && rasterline_cycle >= 15 && rasterline_cycle <= 54
+      bad_line? && (15...55).include?(column) && (56...256).include?(rasterline)
     end
 
     def hblank?
@@ -171,20 +177,20 @@ module Ruby64
     end
 
     def foreground_color
-      vic_bank.peek_color(character_index)
+      @color_buffer[char_column] || 1
     end
 
-    def character_row
+    def char_row
       # TODO: scroll
       (rasterline - 56) / 8
     end
 
-    def character_column
+    def char_column
       column - 16
     end
 
-    def character_index
-      (character_row * 40) + character_column
+    def char_index
+      (char_row * 40) + char_column
     end
 
     def display_area?
@@ -200,7 +206,7 @@ module Ruby64
       return if vblank? || hblank?
 
       pixels = if display_area?
-                 screencode = video_matrix(character_index)
+                 screencode = @character_buffer[char_column] || 0
                  char = read_char(screencode, (rasterline - 56) % 8)
                  8.times.map do |i|
                    char[7 - i] == 1 ? foreground_color : background_color
@@ -211,10 +217,6 @@ module Ruby64
                end
 
       pixels.each_with_index { |p, i| display[position + i] = p }
-    end
-
-    def horizontal_cycles
-      width / 8
     end
 
     def video_matrix(index)
@@ -257,17 +259,8 @@ module Ruby64
     end
 
     def fetch_character_data!
-      char_index = rasterline_cycle - 15
-
-      # Screen memory read
-      vic_bank.peek(((@registers.peek(0x18) >> 4) * 0x400) + char_index)
-
-      # Color memory read
-      @address_bus.peek(0xd800 + char_index)
-    end
-
-    def rasterline_cycle
-      ((position / 8) % horizontal_cycles) + 1
+      @character_buffer[char_column + 1] = video_matrix(char_index + 1)
+      @color_buffer[char_column + 1] = vic_bank.peek_color(char_index + 1)
     end
 
     def xscroll
@@ -275,7 +268,10 @@ module Ruby64
     end
 
     def yscroll
-      @registers.peek(0x11) & 0b0111
+      0
+
+      # TODO: scroll
+      # @registers.peek(0x11) & 0b0111
     end
   end
 end
