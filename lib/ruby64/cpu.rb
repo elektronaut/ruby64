@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Ruby64
-  class CPU
+  class CPU < Cycleable
     STATUS_FLAGS = [:carry, :zero, :interrupt, :decimal, :break, 1,
                     :overflow, :negative].freeze
 
@@ -9,7 +9,7 @@ module Ruby64
     include IntegerHelper
     include InstructionSet
 
-    attr_reader :memory, :cycles, :instructions, :boundary_crossed
+    attr_reader :memory, :instructions, :boundary_crossed
     attr_accessor :program_counter, :stack_pointer, :status, :a, :x, :y,
                   :nmi, :irq
 
@@ -21,10 +21,8 @@ module Ruby64
 
       @nmi = @irq = false
 
-      @loop = Fiber.new { loop { main_loop } }
-
-      @cycles = 0
       @instructions = 0
+      super()
     end
 
     def reset!
@@ -45,11 +43,6 @@ module Ruby64
       cycle! while @instruction || @interrupt
     end
 
-    def cycle!
-      @loop.resume
-      nil
-    end
-
     def inspect
       "Cycles: #{@cycles}, PC: #{format16(program_counter)}, " \
         "SP: #{format8(stack_pointer)}, A: #{format8(a)}, X: #{format8(x)}, " \
@@ -57,13 +50,6 @@ module Ruby64
     end
 
     private
-
-    def cycle
-      Fiber.yield
-      result = yield if block_given?
-      @cycles += 1
-      result
-    end
 
     def extra_cycle(instruction)
       return cycle unless instruction.boundary_cycle?

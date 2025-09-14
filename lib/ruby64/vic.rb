@@ -70,7 +70,7 @@ module Ruby64
   #
   # $D02F-$D03F: Not in use, always reads 0xff
   # $D040-$D3FF: Repeat $D0000 to $D03F every 64 bytes
-  class VIC
+  class VIC < Cycleable
     include Addressable
     include IntegerHelper
 
@@ -88,7 +88,6 @@ module Ruby64
       @registers = Memory.new(length: 2**6)
       @display = Array.new(@width * @height, 0)
 
-      @cycles = 0
       @position = 0
       @interrupted = false
 
@@ -102,17 +101,7 @@ module Ruby64
       @registers.write(0x11, [0x1b, 0]) # $D011: DEN=1, RSEL=1, YSCROLL=3
       @registers.write(0x16, [0xc8]) # $D016: Text mode, XSCROLL=0
       @registers.write(0x19, [0, 0]) # IRQ flags
-    end
-
-    def cycle!
-      @interrupted = false
-      check_raster_irq! if beginning_of_line?
-      fetch_character_data! if dma_active?
-
-      draw!
-
-      @position = (@position + 8) % (width * height)
-      @cycles += 1
+      super()
     end
 
     def interrupt!
@@ -167,6 +156,18 @@ module Ruby64
     end
 
     private
+
+    def main_loop
+      @interrupted = false
+      check_raster_irq! if beginning_of_line?
+
+      cycle { fetch_character_data! } if dma_active?
+
+      draw!
+
+      @position = (@position + 8) % (width * height)
+      Fiber.yield
+    end
 
     def beginning_of_line?
       (position % width).zero?
