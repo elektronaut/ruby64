@@ -105,7 +105,7 @@ RSpec.describe Ruby64::VIC do
     end
 
     context "when on a bad line during the DMA period" do
-      xit { is_expected.to be(true) }
+      it { is_expected.to be(true) }
     end
 
     context "when on a bad line outside the DMA period" do

@@ -144,7 +144,7 @@ module Ruby64
     end
 
     def dma_active?
-      bad_line? && (15...55).include?(column) && (56...256).include?(rasterline)
+      bad_line? && (15...55).include?(column)
     end
 
     def hblank?
@@ -161,7 +161,7 @@ module Ruby64
       @interrupted = false
       check_raster_irq! if beginning_of_line?
 
-      cycle { fetch_character_data! } if dma_active?
+      fetch_character_data! if dma_active?
 
       draw!
 
@@ -182,8 +182,7 @@ module Ruby64
     end
 
     def char_row
-      # TODO: scroll
-      (rasterline - 56) / 8
+      (rasterline - display_top) / 8
     end
 
     def char_column
@@ -194,10 +193,6 @@ module Ruby64
       (char_row * 40) + char_column
     end
 
-    def display_area?
-      (16...56).include?(column) && (56...256).include?(rasterline)
-    end
-
     def read_char(screencode, line)
       char_offset = (@registers.peek(0x18) & 0b1110) * 0x400
       vic_bank.peek(char_offset + (screencode * 8) + line)
@@ -206,18 +201,22 @@ module Ruby64
     def draw!
       return if vblank? || hblank?
 
-      pixels = if display_area?
-                 screencode = @character_buffer[char_column] || 0
-                 char = read_char(screencode, (rasterline - 56) % 8)
-                 8.times.map do |i|
-                   char[7 - i] == 1 ? foreground_color : background_color
-                 end
-               else
-                 # Draw border
-                 [@registers.peek(0x20)] * 8
-               end
+      x_pos = position % width
+      screencode = @character_buffer[char_column] || 0
+      char = read_char(screencode, (rasterline - display_top) % 8)
 
+      pixels = 8.times.map { |i| pixel_color(x_pos + i, char, 7 - i) }
       pixels.each_with_index { |p, i| display[position + i] = p }
+    end
+
+    def pixel_color(pixel_x, char, bit_index)
+      in_display = display_x_range.include?(pixel_x) &&
+                   display_lines.include?(rasterline)
+      if in_display
+        char[bit_index] == 1 ? foreground_color : background_color
+      else
+        @registers.peek(0x20)
+      end
     end
 
     def video_matrix(index)
@@ -242,13 +241,9 @@ module Ruby64
     def bad_line?
       return false unless display_enabled?
       return false unless text_mode?
-      return false if rasterline < 48 || rasterline > 247
+      return false unless (48..247).include?(rasterline)
 
-      if @registers.peek(0x11).anybits?(0x08)
-        (rasterline - 48) % 8 == yscroll
-      else
-        (rasterline - 48) % 8 == yscroll && rasterline >= 55
-      end
+      (rasterline & 0b111) == yscroll
     end
 
     def display_enabled?
@@ -269,10 +264,31 @@ module Ruby64
     end
 
     def yscroll
-      0
+      @registers.peek(0x11) & 0b0111
+    end
 
-      # TODO: scroll
-      # @registers.peek(0x11) & 0b0111
+    def rsel?
+      @registers.peek(0x11).anybits?(0x08)
+    end
+
+    def csel?
+      @registers.peek(0x16).anybits?(0x08)
+    end
+
+    def display_top
+      48 + yscroll
+    end
+
+    def display_lines
+      if rsel?
+        display_top..(display_top + 199)
+      else
+        (display_top + 4)..(display_top + 195)
+      end
+    end
+
+    def display_x_range
+      csel? ? 128..447 : 135..438
     end
   end
 end
