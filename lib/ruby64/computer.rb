@@ -14,6 +14,9 @@ module Ruby64
     def initialize(debug: false)
       @address_bus = AddressBus.new
       @cpu = CPU.new(@address_bus, debug:)
+      @vic = @address_bus.vic
+      @cia1 = @address_bus.cia1
+      @cia2 = @address_bus.cia2
       @cycles = 0
       @init_handlers = []
     end
@@ -21,12 +24,12 @@ module Ruby64
     def cycle!
       handle_init
 
-      vic.cycle!
-      cia1.cycle!
-      cia2.cycle!
-      cpu.irq = true if cia1.interrupted? || vic.interrupted?
-      cpu.nmi = true if cia2.interrupted?
-      cpu.cycle! unless vic.dma_active?
+      @vic.cycle!
+      @cia1.cycle!
+      @cia2.cycle!
+      @cpu.irq = true if @cia1.interrupted? || @vic.interrupted?
+      @cpu.nmi = true if @cia2.interrupted?
+      @cpu.cycle! unless @vic.dma_active?
 
       @cycles += 1
     end

@@ -20,8 +20,7 @@ module Ruby64
     end
 
     def in_range?(addr)
-      addr_i = addr.to_i
-      addr_i >= @start && addr_i < @end
+      addr >= @start && addr < @end
     end
 
     def peek(_addr)
@@ -53,11 +52,12 @@ module Ruby64
     private
 
     def index(addr)
-      unless in_range?(addr.to_i)
+      i = addr - @start
+      unless i >= 0 && i < @length
         raise OutOfBoundsError, "#{addr.inspect} (#{range})"
       end
 
-      addr.to_i - start
+      i
     end
   end
 end
