@@ -21,7 +21,7 @@ module Ruby64
       @height = 312
 
       @registers = VIC::Registers.new
-      @sequencer = VIC::Sequencer.new(@width, @registers)
+      @sequencer = VIC::Sequencer.new(@width, @registers, @vic_bank)
       @display = Array.new(@width * @height, 0)
 
       @position = 0
@@ -113,25 +113,20 @@ module Ruby64
       (char_row * 40) + char_column
     end
 
-    def read_char(screencode, line)
-      vic_bank.peek(@registers.char_base + (screencode * 8) + line)
-    end
-
     def draw!
       return if blanking?
 
       pos = @position
       line = pos / @width
       col = ((pos % @width) / 8) - 16
-      char_line = (line - display_top) % 8
+      row = (line - display_top) % 8
 
-      char = read_char(@character_buffer[col] || 0, char_line)
-      @sequencer.emit(char, @color_buffer[col] || 1, col, pos % @width, line)
+      screencode = @character_buffer[col] || 0
+      @sequencer.emit(screencode, @color_buffer[col] || 1, col, line, row)
       flush_cell(pos)
     end
 
-    # Copy the sequencer's freshly rendered cell from the line buffer into the
-    # frame display.
+    # Copy the sequencer's freshly rendered cell from the line buffer into the frame display.
     def flush_cell(pos)
       x = pos % @width
       colors = @sequencer.colors
@@ -160,7 +155,6 @@ module Ruby64
 
     def bad_line?
       return false unless @registers.display_enabled?
-      return false unless @registers.text_mode?
 
       r = rasterline
       return false unless r.between?(48, 247)

@@ -97,19 +97,24 @@ module Ruby64
         end
       end
 
+      # Graphics modes
+      def ecm = @bytes[0x11][6]
+      def bmm = @bytes[0x11][5]
+      def mcm = @bytes[0x16][4]
+      def mode = (ecm << 2) | (bmm << 1) | mcm
+
       def xscroll = @bytes[0x16] & 0b0111
       def yscroll = @bytes[0x11] & 0b0111
 
       def rsel? = @bytes[0x11].anybits?(0x08)
       def csel? = @bytes[0x16].anybits?(0x08)
       def display_enabled? = @bytes[0x11].anybits?(0x10)
-      def text_mode? = @bytes[0x11].nobits?(0x20) && @bytes[0x16].nobits?(0x10)
 
       def char_base = (@bytes[0x18] & 0b1110) * 0x400
       def screen_base = (@bytes[0x18] >> 4) * 0x400
 
       def border = @bytes[0x20]
-      def background = @bytes[0x21]
+      def background(index = 0) = @bytes[0x21 + index]
 
       def raster_target = uint16(@bytes[0x12], (@bytes[0x11] & 0x80) >> 7)
       def latch_raster_irq! = @bytes[0x19] |= 0x01

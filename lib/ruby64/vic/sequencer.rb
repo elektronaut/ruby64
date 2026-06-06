@@ -1,24 +1,37 @@
 # frozen_string_literal: true
 
+require "ruby64/vic/graphics_mode"
+
 module Ruby64
   class VIC < Cycleable
     # = VIC-II Sequencer
     #
     # Turns fetched graphics data into output pixels.
     class Sequencer
-      include IntegerHelper
-
       # X position bounds of the visible display window, indexed by CSEL.
       DISPLAY_X_BOUNDS = [
         [135, 438].freeze,
         [128, 447].freeze
       ].freeze
 
-      attr_reader :colors, :fg
+      NULL_MODE = GraphicsMode::Null.new
+      MODES = [
+        GraphicsMode::Text.new,           # 000 standard text
+        GraphicsMode::MulticolorText.new, # 001 multicolour text
+        NULL_MODE,                        # 010 standard bitmap
+        NULL_MODE,                        # 011 multicolour bitmap
+        NULL_MODE,                        # 100 ECM text
+        NULL_MODE,                        # 101 invalid
+        NULL_MODE,                        # 110 invalid
+        NULL_MODE                         # 111 invalid
+      ].freeze
 
-      def initialize(width, registers)
+      attr_reader :colors, :fg, :registers, :bank, :cur_colors, :cur_fg
+
+      def initialize(width, registers, bank)
         @width = width
         @registers = registers
+        @bank = bank
         @colors = Array.new(width, 0)
         @fg = Array.new(width, false)
         @cur_colors = Array.new(8, 0)
@@ -35,25 +48,13 @@ module Ruby64
         @prev_fg.fill(false)
       end
 
-      def emit(char, foreground, col, x_pos, line)
-        decode_text(char, foreground)
-        shift_and_clip(col, x_pos, line)
+      def emit(screencode, color, col, line, row)
+        MODES[@registers.mode].decode(screencode, color, row, self)
+        shift_and_clip(col, (col + 16) * 8, line)
         roll
       end
 
       private
-
-      # Standard text: each set bit is a foreground pixel.
-      def decode_text(char, foreground)
-        bg = @registers.background
-        i = 0
-        while i < 8
-          set = char.anybits?(1 << (7 - i))
-          @cur_colors[i] = set ? foreground : bg
-          @cur_fg[i] = set
-          i += 1
-        end
-      end
 
       def shift_and_clip(col, x_pos, line)
         shift = @registers.xscroll
