@@ -76,6 +76,12 @@ module Ruby64
 
     attr_reader :address_bus, :display, :position, :width, :height, :vic_bank
 
+    # X position bounds of the visible display window, indexed by CSEL.
+    DISPLAY_X_BOUNDS = [
+      [135, 438].freeze,
+      [128, 447].freeze
+    ].freeze
+
     def initialize(address_bus = nil, debug: false)
       addressable_at(0xd000, length: 2**10)
       @address_bus = address_bus || AddressBus.new
@@ -85,7 +91,7 @@ module Ruby64
       @width = 504
       @height = 312
 
-      @registers = Memory.new(length: 2**6)
+      @registers = Array.new(2**6, 0)
       @display = Array.new(@width * @height, 0)
 
       @position = 0
@@ -95,13 +101,25 @@ module Ruby64
       @color_buffer = Array.new(40, 0)
 
       # Initialize default colors
-      @registers.write(0x20, [14, 6, 1, 2, 3, 4, 0, 1, 2, 3, 4, 5, 6, 7, 12])
+      write_registers(0x20, [14, 6, 1, 2, 3, 4, 0, 1, 2, 3, 4, 5, 6, 7, 12])
 
       # Initialize VIC control registers with C64 defaults
-      @registers.write(0x11, [0x1b, 0]) # $D011: DEN=1, RSEL=1, YSCROLL=3
-      @registers.write(0x16, [0xc8]) # $D016: Text mode, XSCROLL=0
-      @registers.write(0x19, [0, 0]) # IRQ flags
+      write_registers(0x11, [0x1b, 0]) # $D011: DEN=1, RSEL=1, YSCROLL=3
+      write_registers(0x16, [0xc8]) # $D016: Text mode, XSCROLL=0
+      write_registers(0x19, [0, 0]) # IRQ flags
       super()
+    end
+
+    def cycle!
+      @interrupted = false
+      check_raster_irq! if beginning_of_line?
+
+      fetch_character_data! if dma_active?
+
+      draw!
+
+      @position = (@position + 8) % (width * height)
+      nil
     end
 
     def interrupt!
@@ -115,11 +133,11 @@ module Ruby64
     def peek(addr)
       i = index(addr) % (2**6)
       case i
-      when 0x11 then (@registers.peek(i) & 0x7f) | ((rasterline & 0x100) >> 1)
+      when 0x11 then (@registers[i] & 0x7f) | ((rasterline & 0x100) >> 1)
       when 0x12 then rasterline & 0xff
-      when 0x20..0x2e then @registers.peek(i) | 0xf0 # Color registers
-      when 0x2f..0x3f then 0xff                      # Not in use
-      else @registers.peek(i)
+      when 0x20..0x2e then @registers[i] | 0xf0 # Color registers
+      when 0x2f..0x3f then 0xff                 # Not in use
+      else @registers[i]
       end
     end
 
@@ -127,11 +145,11 @@ module Ruby64
       i = index(addr) % (2**6)
       case i
       when 0x19 # IRQ flags - write 1 to clear
-        @registers.poke(i, @registers.peek(i) & ~value)
+        @registers[i] &= ~value
       when 0x1a # IRQ mask
-        @registers.poke(i, value & 0x0f)
+        @registers[i] = value & 0x0f
       else
-        @registers.poke(i, value)
+        @registers[i] = value
       end
     end
 
@@ -144,41 +162,34 @@ module Ruby64
     end
 
     def dma_active?
-      bad_line? && (15...55).include?(column)
+      return false unless bad_line?
+
+      c = column
+      c >= 15 && c < 55
     end
 
     def hblank?
-      !(10..60).include?(column)
+      c = column
+      c < 10 || c > 60
     end
 
     def vblank?
-      !(16..299).include?(rasterline)
+      r = rasterline
+      r < 16 || r > 299
+    end
+
+    def blanking?
+      vblank? || hblank?
     end
 
     private
-
-    def main_loop
-      @interrupted = false
-      check_raster_irq! if beginning_of_line?
-
-      fetch_character_data! if dma_active?
-
-      draw!
-
-      @position = (@position + 8) % (width * height)
-      Fiber.yield
-    end
 
     def beginning_of_line?
       (position % width).zero?
     end
 
-    def background_color
-      @registers.peek(0x21)
-    end
-
-    def foreground_color
-      @color_buffer[char_column] || 1
+    def write_registers(addr, bytes)
+      bytes.each_with_index { |b, i| @registers[addr + i] = b }
     end
 
     def char_row
@@ -194,64 +205,85 @@ module Ruby64
     end
 
     def read_char(screencode, line)
-      char_offset = (@registers.peek(0x18) & 0b1110) * 0x400
+      char_offset = (@registers[0x18] & 0b1110) * 0x400
       vic_bank.peek(char_offset + (screencode * 8) + line)
     end
 
     def draw!
-      return if vblank? || hblank?
+      return if blanking?
 
-      x_pos = position % width
-      screencode = @character_buffer[char_column] || 0
-      char = read_char(screencode, (rasterline - display_top) % 8)
+      pos = @position
+      line = pos / @width
+      x_pos = pos % @width
+      top = display_top
+      col = (x_pos / 8) - 16
 
-      pixels = 8.times.map { |i| pixel_color(x_pos + i, char, 7 - i) }
-      pixels.each_with_index { |p, i| display[position + i] = p }
+      char = read_char(@character_buffer[col] || 0, (line - top) % 8)
+      render_row(pos, x_pos, char, col, line_in_display?(line, top))
     end
 
-    def pixel_color(pixel_x, char, bit_index)
-      in_display = display_x_range.include?(pixel_x) &&
-                   display_lines.include?(rasterline)
-      if in_display
-        char[bit_index] == 1 ? foreground_color : background_color
+    def render_row(pos, x_pos, char, col, visible)
+      border = @registers[0x20]
+      bg = @registers[0x21]
+      fg = @color_buffer[col] || 1
+      x_lo, x_hi = DISPLAY_X_BOUNDS[csel? ? 1 : 0]
+
+      i = 0
+      while i < 8
+        px = x_pos + i
+        @display[pos + i] =
+          if visible && px >= x_lo && px <= x_hi
+            char.anybits?(1 << (7 - i)) ? fg : bg
+          else
+            border
+          end
+        i += 1
+      end
+    end
+
+    def line_in_display?(line, top)
+      if rsel?
+        line.between?(top, top + 199)
       else
-        @registers.peek(0x20)
+        line.between?(top + 4, top + 195)
       end
     end
 
     def video_matrix(index)
-      vic_bank.peek(((@registers.peek(0x0018) >> 4) * 0x400) + index)
+      vic_bank.peek(((@registers[0x0018] >> 4) * 0x400) + index)
     end
 
     def check_raster_irq!
       return unless rasterline == irq_raster_target
 
       # Set raster IRQ flag
-      @registers.poke(0x19, @registers.peek(0x19) | 0x01)
+      @registers[0x19] |= 0x01
 
       # Trigger interrupt if enabled
-      interrupt! if @registers.peek(0x1a).anybits?(0x01)
+      interrupt! if @registers[0x1a].anybits?(0x01)
     end
 
     def irq_raster_target
-      uint16(@registers.peek(0x12),
-             (@registers.peek(0x11) & 0x80) >> 7)
+      uint16(@registers[0x12],
+             (@registers[0x11] & 0x80) >> 7)
     end
 
     def bad_line?
       return false unless display_enabled?
       return false unless text_mode?
-      return false unless (48..247).include?(rasterline)
 
-      (rasterline & 0b111) == yscroll
+      r = rasterline
+      return false unless r.between?(48, 247)
+
+      (r & 0b111) == yscroll
     end
 
     def display_enabled?
-      @registers.peek(0x11).anybits?(0x10)
+      @registers[0x11].anybits?(0x10)
     end
 
     def text_mode?
-      @registers.peek(0x11).nobits?(0x20) && @registers.peek(0x16).nobits?(0x10)
+      @registers[0x11].nobits?(0x20) && @registers[0x16].nobits?(0x10)
     end
 
     def fetch_character_data!
@@ -260,35 +292,23 @@ module Ruby64
     end
 
     def xscroll
-      @registers.peek(0x16) & 0b0111
+      @registers[0x16] & 0b0111
     end
 
     def yscroll
-      @registers.peek(0x11) & 0b0111
+      @registers[0x11] & 0b0111
     end
 
     def rsel?
-      @registers.peek(0x11).anybits?(0x08)
+      @registers[0x11].anybits?(0x08)
     end
 
     def csel?
-      @registers.peek(0x16).anybits?(0x08)
+      @registers[0x16].anybits?(0x08)
     end
 
     def display_top
       48 + yscroll
-    end
-
-    def display_lines
-      if rsel?
-        display_top..(display_top + 199)
-      else
-        (display_top + 4)..(display_top + 195)
-      end
-    end
-
-    def display_x_range
-      csel? ? 128..447 : 135..438
     end
   end
 end
