@@ -234,6 +234,78 @@ describe Ruby64::CIA do
     end
   end
 
+  describe "timer output on port B" do
+    context "with timer A in pulse mode" do
+      before do
+        cia.control_a.output = true
+        cia.control_a.start = true
+        cia.timer_a = 0x01
+        cia.timer_a_latch = 0x10
+      end
+
+      it "drives PB6 high on the underflow cycle" do
+        cia.cycle!
+        expect(cia[0xdc01][6]).to eq(1)
+      end
+
+      it "drives PB6 low on non-underflow cycles" do
+        cia.cycle! # underflow, reload to 0x10
+        cia.cycle! # 0x10 -> 0x0f, no underflow
+        expect(cia[0xdc01][6]).to eq(0)
+      end
+    end
+
+    context "with timer A in toggle mode" do
+      before do
+        cia.control_a.output = true
+        cia.control_a.out_mode = true
+        cia.control_a.start = true
+        cia.timer_a = 0x01
+        cia.timer_a_latch = 0x01
+      end
+
+      it "drives PB6 low after the first underflow" do
+        cia.cycle!
+        expect(cia[0xdc01][6]).to eq(0)
+      end
+
+      it "drives PB6 high after the second underflow" do
+        2.times { cia.cycle! }
+        expect(cia[0xdc01][6]).to eq(1)
+      end
+    end
+
+    context "with timer B in pulse mode" do
+      before do
+        cia.control_b.output = true
+        cia.control_b.start = true
+        cia.timer_b = 0x01
+        cia.timer_b_latch = 0x10
+      end
+
+      it "drives PB7 high on the underflow cycle" do
+        cia.cycle!
+        expect(cia[0xdc01][7]).to eq(1)
+      end
+    end
+
+    context "when restarting a toggle output" do
+      before do
+        cia.control_a.output = true
+        cia.control_a.out_mode = true
+        cia.control_a.start = true
+        cia.timer_a = 0x01
+        cia.timer_a_latch = 0x05
+        cia.cycle! # underflow toggles PB6 low
+      end
+
+      it "sets the toggle output high when the timer is started" do
+        cia.poke(0xdc0e, 0b00000111) # start + output + toggle
+        expect(cia[0xdc01][6]).to eq(1)
+      end
+    end
+  end
+
   describe "keyboard peripheral" do
     subject(:cia) { described_class.new(start: 0xdc00, peripheral: keyboard) }
 

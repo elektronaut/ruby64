@@ -19,6 +19,8 @@ module Ruby64
       @data_dir_b = 0x0
       @timer_a = @timer_b = 0x0
       @timer_a_latch = @timer_b_latch = 0x0
+      @timer_a_reached_zero = @timer_b_reached_zero = false
+      @pb6_toggle = @pb7_toggle = true
       @serial_data = 0x0
       @tod = TimeOfDay.new
       @interrupt_control = Status.new([:timer_a, :timer_b, :alarm, :serial,
@@ -53,7 +55,8 @@ module Ruby64
 
     def read_port_b
       pins = peripheral ? peripheral.read_b(@data_port_a, @data_port_b) : 0xff
-      mask_data_direction(@data_port_b, pins, @data_dir_b)
+      value = mask_data_direction(@data_port_b, pins, @data_dir_b)
+      apply_timer_output(value)
     end
 
     def peek(addr)
@@ -109,6 +112,24 @@ module Ruby64
       (register & direction) | (pins & ~direction & 0xff)
     end
 
+    def apply_timer_output(value)
+      value = with_bit(value, 6, timer_a_output?) if control_a.output?
+      value = with_bit(value, 7, timer_b_output?) if control_b.output?
+      value
+    end
+
+    def timer_a_output?
+      control_a.out_mode? ? @pb6_toggle : @timer_a_reached_zero
+    end
+
+    def timer_b_output?
+      control_b.out_mode? ? @pb7_toggle : @timer_b_reached_zero
+    end
+
+    def with_bit(value, bit, set)
+      set ? value | (1 << bit) : value & ~(1 << bit)
+    end
+
     def trigger_alarm
       interrupt_status.alarm = true
       interrupt! if interrupt_control.alarm?
@@ -116,6 +137,7 @@ module Ruby64
 
     def update_timers
       @timer_a_reached_zero = false
+      @timer_b_reached_zero = false
       update_timer_a
       update_timer_b
     end
@@ -127,6 +149,7 @@ module Ruby64
       return if timer_a.positive?
 
       @timer_a_reached_zero = true
+      @pb6_toggle = !@pb6_toggle
       interrupt_status.timer_a = true
       interrupt! if interrupt_control.timer_a?
 
@@ -146,6 +169,8 @@ module Ruby64
       end
       return if timer_b.positive?
 
+      @timer_b_reached_zero = true
+      @pb7_toggle = !@pb7_toggle
       interrupt_status.timer_b = true
       interrupt! if interrupt_control.timer_b?
 
@@ -166,11 +191,14 @@ module Ruby64
     end
 
     def write_control_a(value)
+      # Starting the timer sets the toggle output high.
+      @pb6_toggle = true if value.anybits?(0x01)
       control_a.value = value & ~0x10
       @timer_a = timer_a_latch if value.anybits?(0x10)
     end
 
     def write_control_b(value)
+      @pb7_toggle = true if value.anybits?(0x01)
       control_b.value = value & ~0x10
       @timer_b = timer_b_latch if value.anybits?(0x10)
     end
