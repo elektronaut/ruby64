@@ -20,7 +20,7 @@ module Ruby64
       @timer_a = @timer_b = 0x0
       @timer_a_latch = @timer_b_latch = 0x0
       @serial_data = 0x0
-      @clock_start = Time.now
+      @tod = TimeOfDay.new
       @interrupt_control = Status.new([:timer_a, :timer_b, :alarm, :serial,
                                        :flag, 0, 0, 0])
       @interrupt_status = Status.new([:timer_a, :timer_b, :alarm, :serial,
@@ -43,7 +43,7 @@ module Ruby64
     def cycle!
       @interrupted = false
       update_timers
-      # TODO: Check alarm
+      @tod.cycle! { trigger_alarm }
     end
 
     def read_port_a
@@ -66,10 +66,10 @@ module Ruby64
       when 0x05 then high_byte(timer_a)
       when 0x06 then low_byte(timer_b)
       when 0x07 then high_byte(timer_b)
-      when 0x08 then tod_tenths
-      when 0x09 then tod_seconds
-      when 0x0a then tod_minutes
-      when 0x0b then tod_hours(latch: true)
+      when 0x08 then @tod.tenths
+      when 0x09 then @tod.seconds
+      when 0x0a then @tod.minutes
+      when 0x0b then @tod.hours
       when 0x0c then @serial_data
       when 0x0d
         value = interrupt_status.value
@@ -90,38 +90,16 @@ module Ruby64
       when 0x05 then write_timer_a_high(value)
       when 0x06 then @timer_b_latch = uint16(value, high_byte(@timer_b_latch))
       when 0x07 then write_timer_b_high(value)
-      when 0x08 then write_tod_or_alarm({ tenths: bcd_to_i(value) })
-      when 0x09 then write_tod_or_alarm({ seconds: bcd_to_i(value) })
-      when 0x0a then write_tod_or_alarm({ minutes: bcd_to_i(value) })
-      when 0x0b
-        write_tod_or_alarm({ hours: parse_hours(value) }, latch: true)
+      when 0x08 then @tod.write(:tenths, value, alarm: control_b.alarm?)
+      when 0x09 then @tod.write(:seconds, value, alarm: control_b.alarm?)
+      when 0x0a then @tod.write(:minutes, value, alarm: control_b.alarm?)
+      when 0x0b then @tod.write_hours(value, alarm: control_b.alarm?)
       when 0x0c
         # TODO: Serial
       when 0x0d then write_interrupt_control(value)
       when 0x0e then write_control_a(value)
       when 0x0f then write_control_b(value)
       end
-    end
-
-    def tod_tenths
-      @latched_time = nil
-      (current_time * 10).to_i % 10
-    end
-
-    def tod_seconds
-      bcd(current_time.to_i % 60)
-    end
-
-    def tod_minutes
-      bcd((current_time / 60).to_i % 60)
-    end
-
-    def tod_hours(latch: false)
-      # Pause the clock to prevent rollover while reading multiple
-      # time registers.
-      @latched_time ||= Time.now if latch
-      hours = (current_time / 3600).to_i % 24
-      bcd(hours % 12) | (hours >= 12 ? 0x80 : 0)
     end
 
     private
@@ -131,13 +109,9 @@ module Ruby64
       (register & direction) | (pins & ~direction & 0xff)
     end
 
-    def current_time
-      (@latched_time || Time.now) - @clock_start
-    end
-
-    def parse_hours(value)
-      # 12 hour clock BCD + bit 7 AM/PM to 24 hour binary
-      bcd_to_i(value & 0b01111111) + (value.nobits?(0b10000000) ? 0 : 12)
+    def trigger_alarm
+      interrupt_status.alarm = true
+      interrupt! if interrupt_control.alarm?
     end
 
     def update_timers
@@ -209,22 +183,6 @@ module Ruby64
         # Set interrupts based on bits 0-4
         interrupt_control.value |= (value & 0x1f)
       end
-    end
-
-    def write_tod_or_alarm(adjustment = {}, latch: false)
-      return if control_b.alarm? # TODO: Set alarm
-
-      @latched_time ||= Time.now if latch
-
-      t = { hours: (current_time / 3600).to_i % 24,
-            minutes: (current_time / 60).to_i % 60,
-            seconds: current_time.to_i % 60,
-            tenths: (current_time * 10).to_i % 10 }.merge(adjustment)
-
-      offset = (t[:hours] * 3600) + (t[:minutes] * 60) +
-               t[:seconds] + (t[:tenths] * 0.1)
-
-      @clock_start = (@latched_time || Time.now) - offset
     end
   end
 end

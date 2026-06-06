@@ -5,17 +5,6 @@ require "spec_helper"
 describe Ruby64::CIA do
   subject(:cia) { described_class.new(start: 0xdc00) }
 
-  let(:boot_time) { Time.local(2024, 9, 1, 23, 2, 11) }
-  let(:current_time) { Time.local(2024, 9, 2, 10, 59, 44) }
-
-  before do
-    Timecop.freeze(boot_time)
-    cia
-    Timecop.freeze(current_time)
-  end
-
-  after { Timecop.return }
-
   it "has a default value for data dir A" do
     expect(cia[0xdc02]).to eq(0xff)
   end
@@ -28,68 +17,56 @@ describe Ruby64::CIA do
     expect(cia[0xdc12]).to eq(0xff)
   end
 
-  describe "reading the ToD clock" do
-    specify { expect(cia[0xdc0b]).to eq(0x11) }
-    specify { expect(cia[0xdc0a]).to eq(0x57) }
-    specify { expect(cia[0xdc09]).to eq(0x33) }
-    specify { expect(cia[0xdc08]).to eq(0x00) }
-
-    it "latches the timer when hours are read" do
-      cia.peek(0xdc0b)
-      Timecop.travel(15 * 60)
-      expect(cia[0xdc0a]).to eq(0x57)
+  describe "time of day clock" do
+    def advance_one_tenth
+      98_525.times { cia.cycle! }
     end
 
-    it "clears the latch when tenths are read" do
-      cia.peek(0xdc0b)
-      Timecop.travel(15 * 60)
-      cia.peek(0xdc08)
-      expect(cia[0xdc0a]).to eq(0x12)
+    context "when first powered on" do
+      specify { expect(cia[0xdc0b]).to eq(0x12) }
+      specify { expect(cia[0xdc0a]).to eq(0x00) }
+      specify { expect(cia[0xdc09]).to eq(0x00) }
+      specify { expect(cia[0xdc08]).to eq(0x00) }
     end
 
-    it "sets the AM/PM bit" do
-      Timecop.travel(12 * 3600)
-      expect(cia[0xdc0b]).to eq(0x11 + 0b10000000)
-    end
-  end
-
-  describe "setting the clock" do
-    it "sets the hours" do
-      cia.poke(0xdc0b, 0x11 + 0b10000000)
-      expect(cia[0xdc0b]).to eq(0x11 + 0b10000000)
-    end
-
-    it "sets the minutes" do
-      cia.poke(0xdc0a, 0x24)
-      expect(cia[0xdc0a]).to eq(0x24)
-    end
-
-    it "sets the seconds" do
+    it "routes register writes to the clock" do
       cia.poke(0xdc09, 0x31)
       expect(cia[0xdc09]).to eq(0x31)
     end
 
-    it "sets the tenths" do
-      cia.poke(0xdc08, 0x09)
-      expect(cia[0xdc08]).to eq(0x09)
+    it "advances a tenth after clock_hz/10 cycles" do
+      advance_one_tenth
+      expect(cia[0xdc08]).to eq(0x01)
     end
 
-    it "does not affect the other registers" do
-      cia.poke(0xdc0a, 0x24)
-      expect(cia[0xdc0b]).to eq(0x11)
-    end
+    context "with the alarm armed" do
+      before do
+        cia.interrupt_control.alarm = true
+        cia.control_b.alarm = true
+        cia.poke(0xdc0b, 0x12)
+        cia.poke(0xdc0a, 0x00)
+        cia.poke(0xdc09, 0x00)
+        cia.poke(0xdc08, 0x01)
+        cia.control_b.alarm = false
+      end
 
-    it "latches the timer when hours are set" do
-      cia.poke(0xdc0b, 0x11)
-      Timecop.travel(15 * 60)
-      expect(cia[0xdc0b]).to eq(0x11)
-    end
+      it "does not fire before the clock matches" do
+        expect(cia.interrupt_status.alarm?).to be(false)
+      end
 
-    it "clears the latch when tenths are read" do
-      cia.poke(0xdc0b, 0x11)
-      Timecop.travel(15 * 60)
-      cia.peek(0xdc08)
-      expect(cia[0xdc0a]).to eq(0x12)
+      it "writes the alarm without changing the clock" do
+        expect(cia[0xdc08]).to eq(0x00)
+      end
+
+      it "raises the alarm flag when the clock matches" do
+        advance_one_tenth
+        expect(cia.interrupt_status.alarm?).to be(true)
+      end
+
+      it "interrupts when the clock matches" do
+        advance_one_tenth
+        expect(cia.interrupted?).to be(true)
+      end
     end
   end
 
