@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-describe Ruby64::VICBank do
+describe Ruby64::VIC::Bank do
   subject(:vic_bank) { described_class.new }
 
   describe ".start" do

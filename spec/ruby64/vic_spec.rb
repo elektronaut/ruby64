@@ -116,7 +116,7 @@ RSpec.describe Ruby64::VIC do
     end
 
     it "is the default after reset (XSCROLL=0)" do
-      expect(vic.send(:xscroll)).to eq(0)
+      expect(vic.peek(0xd016) & 0b0111).to eq(0)
     end
 
     context "with XSCROLL=0" do
