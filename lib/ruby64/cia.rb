@@ -47,15 +47,13 @@ module Ruby64
     end
 
     def read_port_a
-      return @data_port_a unless peripheral
-
-      peripheral.read_b(@data_port_a, @data_port_b)
+      pins = peripheral ? peripheral.read_a(@data_port_a, @data_port_b) : 0xff
+      mask_data_direction(@data_port_a, pins, @data_dir_a)
     end
 
     def read_port_b
-      return @data_port_b unless peripheral
-
-      peripheral.read_b(@data_port_a, @data_port_b)
+      pins = peripheral ? peripheral.read_b(@data_port_a, @data_port_b) : 0xff
+      mask_data_direction(@data_port_b, pins, @data_dir_b)
     end
 
     def peek(addr)
@@ -89,9 +87,9 @@ module Ruby64
       when 0x02 then @data_dir_a = value
       when 0x03 then @data_dir_b = value
       when 0x04 then @timer_a_latch = uint16(value, high_byte(@timer_a_latch))
-      when 0x05 then @timer_a_latch = uint16(low_byte(@timer_a_latch), value)
+      when 0x05 then write_timer_a_high(value)
       when 0x06 then @timer_b_latch = uint16(value, high_byte(@timer_b_latch))
-      when 0x07 then @timer_b_latch = uint16(low_byte(@timer_b_latch), value)
+      when 0x07 then write_timer_b_high(value)
       when 0x08 then write_tod_or_alarm({ tenths: bcd_to_i(value) })
       when 0x09 then write_tod_or_alarm({ seconds: bcd_to_i(value) })
       when 0x0a then write_tod_or_alarm({ minutes: bcd_to_i(value) })
@@ -100,8 +98,8 @@ module Ruby64
       when 0x0c
         # TODO: Serial
       when 0x0d then write_interrupt_control(value)
-      when 0x0e then control_a.value = value
-      when 0x0f then control_b.value = value
+      when 0x0e then write_control_a(value)
+      when 0x0f then write_control_b(value)
       end
     end
 
@@ -127,6 +125,11 @@ module Ruby64
     end
 
     private
+
+    def mask_data_direction(register, pins, direction)
+      # Output bits read back the data register; input bits read the pin state.
+      (register & direction) | (pins & ~direction & 0xff)
+    end
 
     def current_time
       (@latched_time || Time.now) - @clock_start
@@ -163,7 +166,7 @@ module Ruby64
       return unless control_b.start?
 
       if control_b.count_a?
-        @timer_b -= i if @timer_a_reached_zero
+        @timer_b -= 1 if @timer_a_reached_zero
       else
         @timer_b -= 1 # Count CPU cycles
       end
@@ -176,6 +179,26 @@ module Ruby64
       control_b.start = false if control_b.run_mode?
 
       @timer_b = timer_b_latch
+    end
+
+    def write_timer_a_high(value)
+      @timer_a_latch = uint16(low_byte(@timer_a_latch), value)
+      @timer_a = @timer_a_latch unless control_a.start?
+    end
+
+    def write_timer_b_high(value)
+      @timer_b_latch = uint16(low_byte(@timer_b_latch), value)
+      @timer_b = @timer_b_latch unless control_b.start?
+    end
+
+    def write_control_a(value)
+      control_a.value = value & ~0x10
+      @timer_a = timer_a_latch if value.anybits?(0x10)
+    end
+
+    def write_control_b(value)
+      control_b.value = value & ~0x10
+      @timer_b = timer_b_latch if value.anybits?(0x10)
     end
 
     def write_interrupt_control(value)
