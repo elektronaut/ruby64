@@ -2,7 +2,7 @@
 
 source "https://rubygems.org"
 
-gem "ruby2d"
+gem "ruby-sdl2"
 
 group :development, :test do
   gem "benchmark-ips"

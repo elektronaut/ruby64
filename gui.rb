@@ -4,79 +4,15 @@
 $LOAD_PATH.unshift(File.join(File.dirname(__FILE__), "lib"))
 
 require "ruby64"
-require "ruby2d"
+require "sdl2"
 
-computer = Ruby64::Computer.new(debug: false)
+require_relative "gui/palette"
+require_relative "gui/key_map"
+require_relative "gui/pane"
+require_relative "gui/screen_pane"
+require_relative "gui/window"
+require_relative "gui/application"
 
-if ARGV[0] && File.exist?(ARGV[0])
-  prg_data = File.read(ARGV[0], mode: "rb").bytes
+prg_path = ARGV[0] if ARGV[0] && File.exist?(ARGV[0])
 
-  computer.on_init do
-    load_addr = computer.load_prg(prg_data)
-    puts "Loaded at $#{load_addr.to_s(16).upcase}"
-  end
-end
-
-width = 384
-height = 272
-scale = 2
-speed = 1
-
-set(title: "Ruby64", width: width * scale, height: height * scale)
-
-palette = [
-  "#000000", "#FFFFFF", "#924A40", "#84C5CC",
-  "#9351B6", "#72B14B", "#483AAA", "#D5DF7C",
-  "#675200", "#C33D00", "#C18178", "#606060",
-  "#8A8A8A", "#B3EC91", "#867ADE", "#B3B3B3"
-].map { |c| Color.new(c) }
-
-canvas = Canvas.new(width: width * scale, height: height * scale, update: false)
-
-def parse_key(event)
-  { "down" => :cursor_v,
-    "right" => :cursor_h,
-    "backspace" => :delete,
-    "left option" => :cbm,
-    "\\" => :"@",
-    "left shift" => :lshift,
-    "right shift" => :rshift }[event.key] || event.key.to_sym
-end
-
-on :key_down do |event|
-  computer.keyboard.press(parse_key(event))
-end
-
-on :key_up do |event|
-  computer.keyboard.release(parse_key(event))
-end
-
-update do
-  ((width * height / 8) * speed).to_i.times { computer.cycle! }
-
-  display = computer.vic.display
-  vic_width = computer.vic.width
-
-  (0...height).each do |row|
-    base = ((row + 20) * vic_width) + 96
-    y = row * scale
-    col = 0
-    while col < width
-      c = display[base + col]
-      run = 1
-      run += 1 while col + run < width && display[base + col + run] == c
-      canvas.fill_rectangle(
-        x: col * scale, y:, width: run * scale, height: scale, color: palette[c]
-      )
-      col += run
-    end
-  end
-
-  canvas.update
-end
-
-begin
-  show
-ensure
-  puts computer.cpu.inspect
-end
+Ruby64::GUI::Application.new(prg_path:).run

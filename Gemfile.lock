@@ -76,7 +76,7 @@ GEM
       base64
       ostruct
     ruby-progressbar (1.13.0)
-    ruby2d (0.12.1)
+    ruby-sdl2 (0.3.7)
     simplecov (0.17.1)
       docile (~> 1.1)
       json (>= 1.8, < 3)
@@ -102,7 +102,7 @@ DEPENDENCIES
   rubocop-rake
   rubocop-rspec
   ruby-prof
-  ruby2d
+  ruby-sdl2
   simplecov (~> 0.17.1)
   timecop
 

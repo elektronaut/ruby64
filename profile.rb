@@ -22,4 +22,4 @@ result = profile.stop
 puts "Cycles: #{computer.cycles}, instructions: #{computer.cpu.instructions}"
 
 printer = RubyProf::FlatPrinter.new(result)
-printer.print($stdout, {})
+printer.print($stdout)
