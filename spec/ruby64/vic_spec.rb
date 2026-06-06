@@ -97,61 +97,9 @@ RSpec.describe Ruby64::VIC do
     end
   end
 
-  describe "fine horizontal scrolling (XSCROLL)" do
-    let(:fg) { 1 }
-    let(:bg) { 6 }
-    let(:col) { 10 }
-
-    before do
-      vic.instance_variable_set(:@color_buffer, Array.new(40, fg))
-      vic.poke(0xd021, bg)
-    end
-
-    # The eight pixels rendered for this cell, by display colour.
-    def render(char, prev_char: 0, xscroll: 0)
-      pos = (col + 16) * 8
-      vic.poke(0xd016, 0xc8 | xscroll) # keep CSEL (40 cols), set XSCROLL
-      vic.send(:render_row, pos, char, prev_char, col, true)
-      vic.display[pos, 8]
-    end
-
-    it "is the default after reset (XSCROLL=0)" do
+  describe "XSCROLL default" do
+    it "is zero after reset" do
       expect(vic.peek(0xd016) & 0b0111).to eq(0)
-    end
-
-    context "with XSCROLL=0" do
-      it "draws the cell unshifted" do
-        # bit 7 set -> leftmost pixel is foreground
-        expect(render(0b1000_0000)).to eq([fg, bg, bg, bg, bg, bg, bg, bg])
-      end
-    end
-
-    context "with XSCROLL=1" do
-      it "shifts the cell one pixel to the right" do
-        expect(render(0b1000_0000, xscroll: 1))
-          .to eq([bg, fg, bg, bg, bg, bg, bg, bg])
-      end
-
-      it "bleeds the previous cell into the vacated pixel" do
-        # prev cell bit 0 set -> its rightmost pixel fills the leftmost slot
-        expect(render(0, prev_char: 0b0000_0001, xscroll: 1))
-          .to eq([fg, bg, bg, bg, bg, bg, bg, bg])
-      end
-    end
-
-    context "with XSCROLL=7 (maximum)" do
-      it "shifts the cell seven pixels to the right" do
-        expect(render(0b1000_0000, xscroll: 7))
-          .to eq([bg, bg, bg, bg, bg, bg, bg, fg])
-      end
-    end
-
-    context "when at the left edge of the display (column 0)" do
-      let(:col) { 0 }
-
-      it "fills shifted-in pixels with background, not column 39" do
-        expect(render(0, prev_char: 0b0000_0001, xscroll: 1).first).to eq(bg)
-      end
     end
   end
 

@@ -2,6 +2,7 @@
 
 require "ruby64/vic/bank"
 require "ruby64/vic/registers"
+require "ruby64/vic/sequencer"
 
 module Ruby64
   class VIC < Cycleable
@@ -9,12 +10,6 @@ module Ruby64
     include IntegerHelper
 
     attr_reader :address_bus, :display, :position, :width, :height, :vic_bank
-
-    # X position bounds of the visible display window, indexed by CSEL.
-    DISPLAY_X_BOUNDS = [
-      [135, 438].freeze,
-      [128, 447].freeze
-    ].freeze
 
     def initialize(address_bus = nil, debug: false)
       addressable_at(0xd000, length: 2**10)
@@ -26,6 +21,7 @@ module Ruby64
       @height = 312
 
       @registers = VIC::Registers.new
+      @sequencer = VIC::Sequencer.new(@width, @registers)
       @display = Array.new(@width * @height, 0)
 
       @position = 0
@@ -37,7 +33,10 @@ module Ruby64
     end
 
     def cycle!
-      check_raster_irq! if beginning_of_line?
+      if beginning_of_line?
+        check_raster_irq!
+        @sequencer.new_line
+      end
 
       fetch_character_data! if dma_active?
 
@@ -123,60 +122,23 @@ module Ruby64
 
       pos = @position
       line = pos / @width
-      top = display_top
       col = ((pos % @width) / 8) - 16
-      char_line = (line - top) % 8
+      char_line = (line - display_top) % 8
 
       char = read_char(@character_buffer[col] || 0, char_line)
-      render_row(pos, char, prev_char(col, char_line), col, line_in_display?(line, top))
+      @sequencer.emit(char, @color_buffer[col] || 1, col, pos % @width, line)
+      flush_cell(pos)
     end
 
-    def prev_char(col, char_line)
-      return 0 unless @registers.xscroll.positive? && col.positive?
-
-      read_char(@character_buffer[col - 1] || 0, char_line)
-    end
-
-    def render_row(pos, char, prev_char, col, visible)
-      border = @registers.border
-      bg = @registers.background
-      fg = @color_buffer[col] || 1
-      prev_fg = left_fg(col, bg)
-      window = (prev_char << 8) | char
-      x_pos = pos % @width
-      shift = @registers.xscroll
-
+    # Copy the sequencer's freshly rendered cell from the line buffer into the
+    # frame display.
+    def flush_cell(pos)
+      x = pos % @width
+      colors = @sequencer.colors
       i = 0
       while i < 8
-        j = (8 + i) - shift
-        @display[pos + i] =
-          if !visible || !in_window?(x_pos + i)
-            border
-          elsif window.anybits?(1 << (15 - j))
-            j < 8 ? prev_fg : fg
-          else
-            bg
-          end
+        @display[pos + i] = colors[x + i]
         i += 1
-      end
-    end
-
-    def in_window?(pixel_x)
-      x_lo, x_hi = DISPLAY_X_BOUNDS[@registers.csel? ? 1 : 0]
-      pixel_x.between?(x_lo, x_hi)
-    end
-
-    # Foreground colour of the column to the left, which bleeds into the shifted-in pixels.
-    # Falls back to background at the left display edge.
-    def left_fg(col, background)
-      col.positive? ? (@color_buffer[col - 1] || 1) : background
-    end
-
-    def line_in_display?(line, top)
-      if @registers.rsel?
-        line.between?(top, top + 199)
-      else
-        line.between?(top + 4, top + 195)
       end
     end
 
