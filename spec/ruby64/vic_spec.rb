@@ -97,6 +97,114 @@ RSpec.describe Ruby64::VIC do
     end
   end
 
+  describe "fine horizontal scrolling (XSCROLL)" do
+    let(:fg) { 1 }
+    let(:bg) { 6 }
+    let(:col) { 10 }
+
+    before do
+      vic.instance_variable_set(:@color_buffer, Array.new(40, fg))
+      vic.poke(0xd021, bg)
+    end
+
+    # The eight pixels rendered for this cell, by display colour.
+    def render(char, prev_char: 0, xscroll: 0)
+      pos = (col + 16) * 8
+      vic.poke(0xd016, 0xc8 | xscroll) # keep CSEL (40 cols), set XSCROLL
+      vic.send(:render_row, pos, char, prev_char, col, true)
+      vic.display[pos, 8]
+    end
+
+    it "is the default after reset (XSCROLL=0)" do
+      expect(vic.send(:xscroll)).to eq(0)
+    end
+
+    context "with XSCROLL=0" do
+      it "draws the cell unshifted" do
+        # bit 7 set -> leftmost pixel is foreground
+        expect(render(0b1000_0000)).to eq([fg, bg, bg, bg, bg, bg, bg, bg])
+      end
+    end
+
+    context "with XSCROLL=1" do
+      it "shifts the cell one pixel to the right" do
+        expect(render(0b1000_0000, xscroll: 1))
+          .to eq([bg, fg, bg, bg, bg, bg, bg, bg])
+      end
+
+      it "bleeds the previous cell into the vacated pixel" do
+        # prev cell bit 0 set -> its rightmost pixel fills the leftmost slot
+        expect(render(0, prev_char: 0b0000_0001, xscroll: 1))
+          .to eq([fg, bg, bg, bg, bg, bg, bg, bg])
+      end
+    end
+
+    context "with XSCROLL=7 (maximum)" do
+      it "shifts the cell seven pixels to the right" do
+        expect(render(0b1000_0000, xscroll: 7))
+          .to eq([bg, bg, bg, bg, bg, bg, bg, fg])
+      end
+    end
+
+    context "when at the left edge of the display (column 0)" do
+      let(:col) { 0 }
+
+      it "fills shifted-in pixels with background, not column 39" do
+        expect(render(0, prev_char: 0b0000_0001, xscroll: 1).first).to eq(bg)
+      end
+    end
+  end
+
+  describe "XSCROLL through a bad-line DMA fetch" do
+    # Char row 0 starts at raster 51, which is a bad line. Raster 52
+    # reuses the fetched buffers at char-line 1.
+    let(:raster) { 52 }
+    let(:col) { 10 }
+    let(:bg) { 6 }
+
+    before do
+      vic.poke(0xd018, 0x18) # video matrix @ $0400, character data @ $2000
+      vic.poke(0xd011, 0x1b) # DEN=1, RSEL=1, YSCROLL=3
+      vic.poke(0xd021, bg)   # background colour
+    end
+
+    def put_char(column, code, color, bits)
+      ram = vic.address_bus.ram
+      ram.poke(0x0400 + column, code)
+      ram.poke(0x2000 + (code * 8) + 1, bits)
+      vic.address_bus.color_ram.poke(0xd800 + column, color)
+    end
+
+    def render_col(xscroll)
+      vic.poke(0xd016, 0xc8 | xscroll) # keep CSEL (40 cols), set XSCROLL
+      ((raster + 1) * 63).times { vic.cycle! }
+      vic.display[(raster * vic.width) + ((col + 16) * 8), 8]
+    end
+
+    it "renders the cell unshifted with XSCROLL=0" do
+      put_char(col, 0x01, 1, 0b1000_0000)
+      expect(render_col(0)).to eq([1, bg, bg, bg, bg, bg, bg, bg])
+    end
+
+    it "shifts the cell one pixel right with XSCROLL=1" do
+      put_char(col, 0x01, 1, 0b1000_0000)
+      put_char(col - 1, 0x03, bg, 0) # blank left neighbour
+      expect(render_col(1)).to eq([bg, 1, bg, bg, bg, bg, bg, bg])
+    end
+
+    it "shifts the cell seven pixels right with XSCROLL=7" do
+      put_char(col, 0x01, 1, 0b1000_0000)
+      put_char(col - 1, 0x03, bg, 0)
+      expect(render_col(7)).to eq([bg, bg, bg, bg, bg, bg, bg, 1])
+    end
+
+    it "bleeds the left neighbour into the vacated pixel with XSCROLL=1" do
+      put_char(col, 0x01, 1, 0) # blank cell
+      put_char(col - 1, 0x03, 2, 0b0000_0001) # neighbour's rightmost pixel set
+      expect(render_col(1)).to eq([2, bg, bg, bg, bg, bg, bg, bg])
+    end
+  end
+
   describe "#dma_active?" do
     subject { vic.dma_active? }
 

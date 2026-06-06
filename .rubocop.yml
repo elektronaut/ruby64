@@ -22,6 +22,7 @@ Metrics/BlockLength:
 Metrics/ClassLength:
   Exclude:
     - "lib/ruby64/instruction.rb"
+    - "lib/ruby64/vic.rb"
 
 Metrics/MethodLength:
   Exclude:
@@ -38,7 +39,7 @@ Style/StringLiterals:
 
 Layout/LineLength:
   AutoCorrect: true
-  Max: 80
+  Max: 120
 
 Layout/MultilineOperationIndentation:
   EnforcedStyle: aligned

@@ -211,31 +211,53 @@ module Ruby64
 
       pos = @position
       line = pos / @width
-      x_pos = pos % @width
       top = display_top
-      col = (x_pos / 8) - 16
+      col = ((pos % @width) / 8) - 16
+      char_line = (line - top) % 8
 
-      char = read_char(@character_buffer[col] || 0, (line - top) % 8)
-      render_row(pos, x_pos, char, col, line_in_display?(line, top))
+      char = read_char(@character_buffer[col] || 0, char_line)
+      render_row(pos, char, prev_char(col, char_line), col, line_in_display?(line, top))
     end
 
-    def render_row(pos, x_pos, char, col, visible)
+    def prev_char(col, char_line)
+      return 0 unless xscroll.positive? && col.positive?
+
+      read_char(@character_buffer[col - 1] || 0, char_line)
+    end
+
+    def render_row(pos, char, prev_char, col, visible)
       border = @registers[0x20]
       bg = @registers[0x21]
       fg = @color_buffer[col] || 1
-      x_lo, x_hi = DISPLAY_X_BOUNDS[csel? ? 1 : 0]
+      prev_fg = left_fg(col, bg)
+      window = (prev_char << 8) | char
+      x_pos = pos % @width
+      shift = xscroll
 
       i = 0
       while i < 8
-        px = x_pos + i
+        j = (8 + i) - shift
         @display[pos + i] =
-          if visible && px >= x_lo && px <= x_hi
-            char.anybits?(1 << (7 - i)) ? fg : bg
-          else
+          if !visible || !in_window?(x_pos + i)
             border
+          elsif window.anybits?(1 << (15 - j))
+            j < 8 ? prev_fg : fg
+          else
+            bg
           end
         i += 1
       end
+    end
+
+    def in_window?(pixel_x)
+      x_lo, x_hi = DISPLAY_X_BOUNDS[csel? ? 1 : 0]
+      pixel_x.between?(x_lo, x_hi)
+    end
+
+    # Foreground colour of the column to the left, which bleeds into the shifted-in pixels.
+    # Falls back to background at the left display edge.
+    def left_fg(col, background)
+      col.positive? ? (@color_buffer[col - 1] || 1) : background
     end
 
     def line_in_display?(line, top)
