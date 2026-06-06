@@ -31,6 +31,8 @@ palette = [
   "#8A8A8A", "#B3EC91", "#867ADE", "#B3B3B3"
 ].map { |c| Color.new(c) }
 
+canvas = Canvas.new(width: width * scale, height: height * scale, update: false)
+
 def parse_key(event)
   { "down" => :cursor_v,
     "right" => :cursor_h,
@@ -52,14 +54,25 @@ end
 update do
   ((width * height / 8) * speed).to_i.times { computer.cycle! }
 
+  display = computer.vic.display
+  vic_width = computer.vic.width
+
   (0...height).each do |row|
-    (0...width).each do |col|
-      c = computer.vic.display[((row + 20) * computer.vic.width) + (col + 96)]
-      x = col * scale
-      y = row * scale
-      Pixel.draw(x:, y:, size: scale, color: palette[c])
+    base = ((row + 20) * vic_width) + 96
+    y = row * scale
+    col = 0
+    while col < width
+      c = display[base + col]
+      run = 1
+      run += 1 while col + run < width && display[base + col + run] == c
+      canvas.fill_rectangle(
+        x: col * scale, y:, width: run * scale, height: scale, color: palette[c]
+      )
+      col += run
     end
   end
+
+  canvas.update
 end
 
 begin
