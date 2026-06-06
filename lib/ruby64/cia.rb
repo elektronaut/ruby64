@@ -34,16 +34,14 @@ module Ruby64
     end
 
     def interrupt!
-      @interrupted = true
       interrupt_status.interrupt = true
     end
 
     def interrupted?
-      @interrupted
+      interrupt_status.interrupt?
     end
 
     def cycle!
-      @interrupted = false
       update_timers
       @tod.cycle! { trigger_alarm }
     end

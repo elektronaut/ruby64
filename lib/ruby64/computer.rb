@@ -18,6 +18,7 @@ module Ruby64
       @cia1 = @address_bus.cia1
       @cia2 = @address_bus.cia2
       @cycles = 0
+      @nmi_asserted = false
       @init_handlers = []
     end
 
@@ -27,8 +28,12 @@ module Ruby64
       @vic.cycle!
       @cia1.cycle!
       @cia2.cycle!
+
       @cpu.irq = true if @cia1.interrupted? || @vic.interrupted?
-      @cpu.nmi = true if @cia2.interrupted?
+
+      @cpu.nmi = true if @cia2.interrupted? && !@nmi_asserted
+      @nmi_asserted = @cia2.interrupted?
+
       @cpu.cycle! unless @vic.dma_active?
 
       @cycles += 1

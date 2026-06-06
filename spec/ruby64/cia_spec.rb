@@ -81,6 +81,46 @@ describe Ruby64::CIA do
     end
   end
 
+  describe "the interrupt line" do
+    before do
+      cia.control_a.start = true
+      cia.timer_a = 0x01
+      cia.timer_a_latch = 0xff # reloads high so it won't underflow again soon
+    end
+
+    context "when the source is enabled" do
+      before do
+        cia.interrupt_control.timer_a = true
+        cia.cycle! # underflow asserts the line
+      end
+
+      it "stays asserted across cycles until acknowledged" do
+        5.times { cia.cycle! }
+        expect(cia.interrupted?).to be(true)
+      end
+
+      it "is released after reading the interrupt control register" do
+        cia.peek(0xdc0d)
+        expect(cia.interrupted?).to be(false)
+      end
+    end
+
+    context "when the source is masked" do
+      before do
+        cia.interrupt_control.timer_a = false
+        cia.cycle! # underflow with the source disabled
+      end
+
+      it "still records the event in the status register" do
+        expect(cia.interrupt_status.timer_a?).to be(true)
+      end
+
+      it "does not assert the interrupt line" do
+        expect(cia.interrupted?).to be(false)
+      end
+    end
+  end
+
   describe "timer A" do
     before do
       cia.interrupt_control.timer_a = true

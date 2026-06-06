@@ -199,7 +199,7 @@ module Ruby64
     end
 
     def main_loop
-      if nmi || irq
+      if nmi || (irq && !status.interrupt?)
         handle_interrupts
       else
         @boundary_crossed = false

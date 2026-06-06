@@ -95,7 +95,6 @@ module Ruby64
       @display = Array.new(@width * @height, 0)
 
       @position = 0
-      @interrupted = false
 
       @character_buffer = Array.new(40, 0)
       @color_buffer = Array.new(40, 0)
@@ -111,7 +110,6 @@ module Ruby64
     end
 
     def cycle!
-      @interrupted = false
       check_raster_irq! if beginning_of_line?
 
       fetch_character_data! if dma_active?
@@ -122,12 +120,10 @@ module Ruby64
       nil
     end
 
-    def interrupt!
-      @interrupted = true
-    end
-
+    # The IRQ line is held asserted while any enabled latch bit is set in
+    # $D019/$D01A, until the program acknowledges it by writing to $D019.
     def interrupted?
-      @interrupted
+      (@registers[0x19] & @registers[0x1a]).anybits?(0x0f)
     end
 
     def peek(addr)
@@ -135,8 +131,9 @@ module Ruby64
       case i
       when 0x11 then (@registers[i] & 0x7f) | ((rasterline & 0x100) >> 1)
       when 0x12 then rasterline & 0xff
-      when 0x20..0x2e then @registers[i] | 0xf0 # Color registers
-      when 0x2f..0x3f then 0xff                 # Not in use
+      when 0x19 then irq_status # Latch + master IRQ bit, unused bits read 1
+      when 0x1a, 0x20..0x2e then @registers[i] | 0xf0 # Unused high bits read 1
+      when 0x2f..0x3f then 0xff # Not in use
       else @registers[i]
       end
     end
@@ -256,11 +253,13 @@ module Ruby64
     def check_raster_irq!
       return unless rasterline == irq_raster_target
 
-      # Set raster IRQ flag
+      # Latch the raster IRQ flag; the line asserts via #interrupted? when the
+      # matching mask bit in $D01A is set.
       @registers[0x19] |= 0x01
+    end
 
-      # Trigger interrupt if enabled
-      interrupt! if @registers[0x1a].anybits?(0x01)
+    def irq_status
+      (@registers[0x19] & 0x0f) | 0x70 | (interrupted? ? 0x80 : 0)
     end
 
     def irq_raster_target

@@ -45,26 +45,33 @@ describe Ruby64::CPU do
       cpu.status.interrupt = interrupt
       cpu.cycle!
       cpu.irq = true # Set the interrupt mid-instruction
-      2.times { cpu.step! } # Finish the instruction and perform the interrupt
     end
 
-    specify { expect(cpu.cycles).to eq(2 + 7) }
-    specify { expect(cpu.stack_pointer).to eq(0xfc) }
-    specify { expect(cpu.status.interrupt?).to be(true) }
-    specify { expect(cpu.irq).to be(false) }
-    specify { expect(cpu.program_counter).to eq(0x0540) }
+    context "when the interrupt flag is clear" do
+      before { 2.times { cpu.step! } } # Finish the instruction, take the IRQ
 
-    it "finishes the previous instruction" do
-      expect(cpu.a).to eq(0x05)
+      specify { expect(cpu.cycles).to eq(2 + 7) }
+      specify { expect(cpu.stack_pointer).to eq(0xfc) }
+      specify { expect(cpu.status.interrupt?).to be(true) }
+      specify { expect(cpu.irq).to be(false) }
+      specify { expect(cpu.program_counter).to eq(0x0540) }
+
+      it "finishes the previous instruction" do
+        expect(cpu.a).to eq(0x05)
+      end
     end
 
-    describe "when the interrupt flag is set" do
+    context "when the interrupt flag is set" do
       let(:interrupt) { true }
+
+      before { cpu.step! } # Finish the instruction; the masked IRQ is ignored
 
       specify { expect(cpu.cycles).to eq(2) }
       specify { expect(cpu.stack_pointer).to eq(0xff) }
       specify { expect(cpu.program_counter).to eq(0xc002) }
-      specify { expect(cpu.irq).to be(false) }
+
+      # The line stays asserted while masked; it is serviced once I clears.
+      specify { expect(cpu.irq).to be(true) }
     end
   end
 

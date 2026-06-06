@@ -38,4 +38,52 @@ RSpec.describe Ruby64::Computer do
     specify { expect(load_addr).to eq(0x0801) }
     specify { expect(computer.ram.read(load_addr, 6)).to eq(prg_data[2..]) }
   end
+
+  describe "interrupt delivery" do
+    # Run from RAM with our own vectors and handlers.
+    before { computer.address_bus.disable_overlays! }
+
+    def load(addr, bytes)
+      computer.ram.write(addr, bytes)
+    end
+
+    def arm_timer(cia)
+      cia.interrupt_control.timer_a = true
+      cia.control_a.start = true
+      cia.timer_a_latch = 0x05
+      cia.timer_a = 0x05
+    end
+
+    context "with a CIA1 timer IRQ" do
+      before do
+        load(0x1000, [0x4c, 0x00, 0x10]) # JMP $1000 (idle loop)
+        # handler: LDA #$2A; STA $3000; JMP $2005
+        load(0x2000, [0xa9, 0x2a, 0x8d, 0x00, 0x30, 0x4c, 0x05, 0x20])
+        load(0xfffe, [0x00, 0x20]) # IRQ vector -> $2000
+        computer.cpu.program_counter = 0x1000
+        computer.cpu.status.interrupt = false
+        arm_timer(computer.cia1)
+      end
+
+      it "runs the IRQ handler" do
+        200.times { computer.cycle! }
+        expect(computer.ram.peek(0x3000)).to eq(0x2a)
+      end
+    end
+
+    context "with a CIA2 NMI" do
+      before do
+        load(0x1000, [0x4c, 0x00, 0x10]) # JMP $1000 (idle loop)
+        load(0x2000, [0xee, 0x00, 0x30, 0x40]) # INC $3000; RTI
+        load(0xfffa, [0x00, 0x20]) # NMI vector -> $2000
+        computer.cpu.program_counter = 0x1000
+        arm_timer(computer.cia2)
+      end
+
+      it "runs the NMI handler only once per edge" do
+        200.times { computer.cycle! }
+        expect(computer.ram.peek(0x3000)).to eq(1)
+      end
+    end
+  end
 end

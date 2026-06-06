@@ -50,6 +50,7 @@ RSpec.describe Ruby64::VIC do
 
       specify { expect(vic.interrupted?).to be(false) }
       specify { expect(vic.peek(0xd019) & 0x01).to eq(1) }
+      specify { expect(vic.peek(0xd019) & 0x80).to eq(0) }
     end
 
     context "when IRQ is enabled" do
@@ -61,10 +62,26 @@ RSpec.describe Ruby64::VIC do
 
       specify { expect(vic.interrupted?).to be(true) }
       specify { expect(vic.peek(0xd019) & 0x01).to eq(1) }
+      specify { expect(vic.peek(0xd019) & 0x80).to eq(0x80) }
+
+      it "stays asserted across cycles until acknowledged" do
+        100.times { vic.cycle! }
+        expect(vic.interrupted?).to be(true)
+      end
 
       it "clears the IRQ flag when writing to it" do
         vic.poke(0xd019, 1)
         expect(vic.peek(0xd019) & 0x01).to eq(0)
+      end
+
+      it "releases the line when the flag is acknowledged" do
+        vic.poke(0xd019, 1)
+        expect(vic.interrupted?).to be(false)
+      end
+
+      it "clears the master IRQ bit when acknowledged" do
+        vic.poke(0xd019, 1)
+        expect(vic.peek(0xd019) & 0x80).to eq(0)
       end
     end
 
