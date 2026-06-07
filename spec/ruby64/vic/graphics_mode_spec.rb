@@ -76,6 +76,41 @@ RSpec.describe Ruby64::VIC::GraphicsMode do
     end
   end
 
+  describe Ruby64::VIC::GraphicsMode::ExtendedBackgroundText do
+    subject(:mode) { described_class.new }
+
+    before do
+      registers.write(0x21, 6) # background 0
+      registers.write(0x22, 5) # background 1
+      registers.write(0x23, 4) # background 2
+      registers.write(0x24, 3) # background 3
+    end
+
+    it "draws set bits in the cell colour" do
+      put_char(1, 0b1000_0000)
+      mode.decode(1, 7, 0, sequencer)
+      expect(sequencer.cur_colors).to eq([7, 6, 6, 6, 6, 6, 6, 6])
+    end
+
+    it "selects the background from the top two screencode bits" do
+      put_char(1, 0)
+      mode.decode(0b1000_0001, 7, 0, sequencer) # bg index 0b10 = 2
+      expect(sequencer.cur_colors).to all(eq(4))
+    end
+
+    it "addresses the character with the low six bits" do
+      put_char(1, 0b1111_1111)
+      mode.decode(0b1100_0001, 7, 0, sequencer) # char = screencode & 0x3f = 1
+      expect(sequencer.cur_colors).to all(eq(7))
+    end
+
+    it "marks set bits as foreground" do
+      put_char(1, 0b1000_0000)
+      mode.decode(1, 7, 0, sequencer)
+      expect(sequencer.cur_fg.first).to be(true)
+    end
+  end
+
   describe Ruby64::VIC::GraphicsMode::Null do
     subject(:mode) { described_class.new }
 

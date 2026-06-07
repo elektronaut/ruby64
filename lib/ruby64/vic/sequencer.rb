@@ -16,14 +16,14 @@ module Ruby64
 
       NULL_MODE = GraphicsMode::Null.new
       MODES = [
-        GraphicsMode::Text.new,           # 000 standard text
-        GraphicsMode::MulticolorText.new, # 001 multicolour text
-        NULL_MODE,                        # 010 standard bitmap
-        NULL_MODE,                        # 011 multicolour bitmap
-        NULL_MODE,                        # 100 ECM text
-        NULL_MODE,                        # 101 invalid
-        NULL_MODE,                        # 110 invalid
-        NULL_MODE                         # 111 invalid
+        GraphicsMode::Text.new,                   # 000 standard text
+        GraphicsMode::MulticolorText.new,         # 001 multicolour text
+        NULL_MODE,                                # 010 standard bitmap
+        NULL_MODE,                                # 011 multicolour bitmap
+        GraphicsMode::ExtendedBackgroundText.new, # 100 ECM text
+        NULL_MODE,                                # 101 invalid
+        NULL_MODE,                                # 110 invalid
+        NULL_MODE                                 # 111 invalid
       ].freeze
 
       attr_reader :colors, :fg, :registers, :bank, :cur_colors, :cur_fg

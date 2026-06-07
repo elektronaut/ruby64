@@ -60,6 +60,17 @@ module Ruby64
         end
       end
 
+      class ExtendedBackgroundText
+        include Hires
+
+        def decode(screencode, color, row, seq)
+          registers = seq.registers
+          background = registers.background((screencode >> 6) & 0b11)
+          data = seq.bank.peek(registers.char_base + ((screencode & 0x3f) * 8) + row)
+          paint_hires(data, color, background, seq.cur_colors, seq.cur_fg)
+        end
+      end
+
       class Null
         def decode(_screencode, _color, _row, seq)
           colors = seq.cur_colors
