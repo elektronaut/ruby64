@@ -368,6 +368,35 @@ describe Ruby64::CIA do
     end
   end
 
+  describe "joystick 2 on port A" do
+    subject(:cia) { described_class.new(start: 0xdc00, peripheral:) }
+
+    let(:peripheral) do
+      Ruby64::ControlPorts.new(keyboard: Ruby64::Keyboard.new, joystick2:)
+    end
+    let(:joystick2) { Ruby64::Joystick.new }
+
+    it "shows a pressed switch through the default output port" do
+      joystick2.press(:up)
+      cia.poke(0xdc02, 0xff) # DDRA as the KERNAL leaves it (all outputs)
+      cia.poke(0xdc00, 0xff) # idle high, as a PEEK(56320) would see
+      expect(cia[0xdc00]).to eq(0b11111110)
+    end
+
+    it "shows a pressed switch when port A is set to input" do
+      joystick2.press(:up)
+      cia.poke(0xdc02, 0x00) # port A all inputs
+      expect(cia[0xdc00]).to eq(0b11111110)
+    end
+
+    it "still reflects a line the CPU drives low" do
+      joystick2.press(:fire) # bit 4
+      cia.poke(0xdc02, 0xff)
+      cia.poke(0xdc00, 0b11111110) # CPU drives bit 0 low
+      expect(cia[0xdc00]).to eq(0b11101110)
+    end
+  end
+
   describe "data direction masking" do
     it "reads output bits from the data register" do
       cia.poke(0xdc02, 0xff) # all outputs

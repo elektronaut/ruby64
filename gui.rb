@@ -8,6 +8,7 @@ require "sdl2"
 
 require_relative "gui/palette"
 require_relative "gui/key_map"
+require_relative "gui/joy_map"
 require_relative "gui/pane"
 require_relative "gui/screen_pane"
 require_relative "gui/window"

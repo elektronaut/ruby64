@@ -25,8 +25,8 @@ module Ruby64
       @keys << key if valid_key?(key)
     end
 
-    def read_a(port_a, _port_b)
-      port_a
+    def read_a(_port_a, _port_b)
+      0xff
     end
 
     def read_b(port_a, _port_b)

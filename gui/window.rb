@@ -24,6 +24,10 @@ module Ruby64
         @renderer.logical_size = [width, height]
       end
 
+      def title=(title)
+        @window.title = title
+      end
+
       def refresh_rate
         rate = SDL2::Display.displays.first.current_mode.refresh_rate
         rate.positive? ? rate : DEFAULT_REFRESH_RATE

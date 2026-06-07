@@ -47,13 +47,13 @@ module Ruby64
     end
 
     def read_port_a
-      pins = peripheral ? peripheral.read_a(@data_port_a, @data_port_b) : 0xff
-      mask_data_direction(@data_port_a, pins, @data_dir_a)
+      pulldown = peripheral ? peripheral.read_a(@data_port_a, @data_port_b) : 0xff
+      driven_lines(@data_port_a, @data_dir_a) & pulldown
     end
 
     def read_port_b
-      pins = peripheral ? peripheral.read_b(@data_port_a, @data_port_b) : 0xff
-      value = mask_data_direction(@data_port_b, pins, @data_dir_b)
+      pulldown = peripheral ? peripheral.read_b(@data_port_a, @data_port_b) : 0xff
+      value = driven_lines(@data_port_b, @data_dir_b) & pulldown
       apply_timer_output(value)
     end
 
@@ -105,9 +105,10 @@ module Ruby64
 
     private
 
-    def mask_data_direction(register, pins, direction)
-      # Output bits read back the data register; input bits read the pin state.
-      (register & direction) | (pins & ~direction & 0xff)
+    def driven_lines(register, direction)
+      # Output bits are driven from the data register; input bits float high.
+      # External peripherals can still pull any line low (wired-AND).
+      (register & direction) | (~direction & 0xff)
     end
 
     def apply_timer_output(value)

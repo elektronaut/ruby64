@@ -30,7 +30,7 @@ module Ruby64
     include Addressable
 
     attr_reader :io_port, :ram, :basic_rom, :character_rom, :kernal_rom,
-                :vic, :sid, :color_ram, :cia1, :cia2, :keyboard
+                :vic, :sid, :color_ram, :cia1, :cia2, :keyboard, :joystick2
 
     def initialize
       @ram = Memory.new([0xff, 0x07], length: 2**16, start: 0)
@@ -40,8 +40,12 @@ module Ruby64
       @kernal_rom    = ROM.load("kernal.rom",    0xe000)
 
       @keyboard = Keyboard.new
+      @joystick2 = Joystick.new
       @vic  = VIC.new(self)
-      @cia1 = CIA.new(start: 0xdc00, peripheral: @keyboard)
+      @cia1 = CIA.new(
+        start: 0xdc00,
+        peripheral: ControlPorts.new(keyboard: @keyboard, joystick2: @joystick2)
+      )
       @cia2 = CIA.new(start: 0xdd00)
       @sid  = SID.new
 
