@@ -407,6 +407,61 @@ RSpec.describe Ruby64::VIC do
     end
   end
 
+  describe "sprite DMA cycle stealing (#ba_low?)" do
+    subject { vic.ba_low? }
+
+    let(:line) { 60 } # 60 & 7 == 4, never a bad line at YSCROLL=3
+    let(:rasterline_cycle) { 57 } # inside sprite 0's s-access window
+
+    before do
+      vic.poke(0xd011, 0x1b)    # DEN=1, RSEL=1, YSCROLL=3
+      vic.poke(0xd015, sprites) # sprite enable mask
+      vic.poke(0xd001, line)    # sprite 0 Y
+      vic.poke(0xd007, line)    # sprite 3 Y
+      ((line * 63) + rasterline_cycle).times { vic.cycle! }
+    end
+
+    context "with sprite 0 enabled, during its s-accesses" do
+      let(:sprites) { 0x01 }
+
+      it { is_expected.to be(true) }
+    end
+
+    context "with sprite 0 enabled, three cycles before its first access" do
+      let(:sprites) { 0x01 }
+      let(:rasterline_cycle) { 55 }
+
+      it { is_expected.to be(true) }
+    end
+
+    context "with sprite 0 enabled, before BA is asserted" do
+      let(:sprites) { 0x01 }
+      let(:rasterline_cycle) { 54 }
+
+      it { is_expected.to be(false) }
+    end
+
+    context "with sprite 0 enabled, after its accesses" do
+      let(:sprites) { 0x01 }
+      let(:rasterline_cycle) { 60 } # sprite 1 disabled, so BA released
+
+      it { is_expected.to be(false) }
+    end
+
+    context "with the sprite disabled" do
+      let(:sprites) { 0x00 }
+
+      it { is_expected.to be(false) }
+    end
+
+    context "with sprite 3 enabled, in the left-border accesses" do
+      let(:sprites) { 0x08 }
+      let(:rasterline_cycle) { 1 } # sprite 3 steals columns 0..2
+
+      it { is_expected.to be(true) }
+    end
+  end
+
   describe "FLD: withholding bad lines opens an idle gap" do
     let(:bg) { 6 }
     let(:fg) { 1 }

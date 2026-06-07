@@ -30,6 +30,24 @@ RSpec.describe Ruby64::Computer do
     end
   end
 
+  describe "VIC-II sprite DMA cycle stealing" do
+    before do
+      computer.vic.poke(0xd011, 0x1b) # DEN=1, RSEL=1, YSCROLL=3
+      computer.vic.poke(0xd015, 0x01) # enable sprite 0
+      computer.vic.poke(0xd001, 60)   # sprite 0 displays from line 60
+    end
+
+    it "steals CPU cycles for an active sprite on a non-bad line" do
+      (60 * 63).times { computer.cycle! } # advance to the start of line 60
+      initial_cpu_cycles = computer.cpu.cycles
+
+      63.times { computer.cycle! } # one full line 60 (not a bad line)
+
+      stolen = 63 - (computer.cpu.cycles - initial_cpu_cycles)
+      expect(stolen).to be > 0
+    end
+  end
+
   describe "#load_prg" do
     subject(:load_addr) { computer.load_prg(prg_data) }
 

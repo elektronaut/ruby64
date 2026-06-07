@@ -13,6 +13,11 @@ module Ruby64
 
     attr_reader :address_bus, :display, :position, :width, :height, :vic_bank
 
+    SPRITE_BA_RANGES = [
+      55..59, 57..61, 59..62,
+      0..2, 0..4, 2..6, 4..8, 6..10
+    ].freeze
+
     def initialize(address_bus = nil, debug: false)
       addressable_at(0xd000, length: 2**10)
       @address_bus = address_bus || AddressBus.new
@@ -32,6 +37,7 @@ module Ruby64
 
       @character_buffer = Array.new(40, 0)
       @color_buffer = Array.new(40, 0)
+      @sprite_ba = Array.new(@width / 8, false)
 
       super()
     end
@@ -42,6 +48,7 @@ module Ruby64
         check_raster_irq!
         @sequencer.new_line(rasterline)
         @sprites.start_line(rasterline)
+        rebuild_sprite_ba
         @display_state.new_line
       end
 
@@ -92,10 +99,10 @@ module Ruby64
     end
 
     def ba_low?
-      return false unless @display_state.bad_line?
-
       c = column
-      c >= 13 && c < 56
+      return true if @sprite_ba[c]
+
+      @display_state.bad_line? && c >= 13 && c < 56
     end
 
     def hblank?
@@ -116,6 +123,15 @@ module Ruby64
 
     def beginning_of_line?
       (position % width).zero?
+    end
+
+    def rebuild_sprite_ba
+      @sprite_ba.fill(false)
+      SPRITE_BA_RANGES.each_with_index do |range, n|
+        next unless @sprites[n].displaying?
+
+        range.each { |c| @sprite_ba[c] = true }
+      end
     end
 
     def draw!
