@@ -19,8 +19,12 @@ RSpec.describe Ruby64::VIC::Sequencer do
     bank.address_bus.ram.poke(screencode * 8, bits)
   end
 
+  def emit_at(screencode, column, row: 0)
+    sequencer.emit(screencode, 1, column, column, row)
+  end
+
   def warm_columns
-    (0...(col - 1)).each { |c| sequencer.emit(0, 1, c) }
+    (0...(col - 1)).each { |c| emit_at(0, c) }
   end
 
   def render(bits, xscroll: 0, prev_bits: nil, line: 51)
@@ -30,8 +34,8 @@ RSpec.describe Ruby64::VIC::Sequencer do
     put_char(2, prev_bits || 0)
     sequencer.new_line(line)
     warm_columns
-    sequencer.emit(prev_bits ? 2 : 0, 1, col - 1)
-    sequencer.emit(1, 1, col)
+    emit_at(prev_bits ? 2 : 0, col - 1)
+    emit_at(1, col)
     sequencer.colors[x_pos, 8]
   end
 
@@ -60,8 +64,11 @@ RSpec.describe Ruby64::VIC::Sequencer do
       expect(render_fg(0)).to all(be(false))
     end
 
-    it "marks border pixels as not foreground" do
-      expect(render_fg(0xff, line: 10)).to all(be(false))
+    it "marks idle-state pixels as not foreground" do
+      put_char(1, 0xff)
+      sequencer.new_line(51)
+      sequencer.emit_idle(col)
+      expect(sequencer.fg[x_pos, 8]).to all(be(false))
     end
 
     describe "under the 38-column border" do
@@ -69,7 +76,7 @@ RSpec.describe Ruby64::VIC::Sequencer do
         registers.write(0x16, 0xc0) # CSEL=38, XSCROLL=0
         put_char(1, 0xff)
         sequencer.new_line(51)
-        sequencer.emit(1, 1, 0) # column 0 -> x 128..135; x 128 is clipped
+        emit_at(1, 0) # column 0 -> x 128..135; x 128 is clipped
       end
 
       it "shows the border colour" do
@@ -95,7 +102,7 @@ RSpec.describe Ruby64::VIC::Sequencer do
       registers.write(0x16, 0xc8) # CSEL=40, XSCROLL=0
       put_char(1, 0xff)
       sequencer.new_line(51)
-      sequencer.emit(1, 1, -16) # column -16 maps to x 0 (border)
+      emit_at(1, -16) # column -16 maps to x 0 (border)
       expect(sequencer.colors[0, 8]).to all(eq(2))
     end
   end
@@ -151,7 +158,7 @@ RSpec.describe Ruby64::VIC::Sequencer do
       sequencer.new_line(51)
       (-6..44).each do |c|
         registers.write(0x16, switch_to) if switch_at && c == switch_at
-        sequencer.emit(1, 1, c)
+        emit_at(1, c)
       end
     end
 

@@ -53,7 +53,6 @@ module Ruby64
       # Reset the line buffers at the start of a rasterline and re-evaluate the
       # vertical border flip-flop.
       def new_line(line)
-        @line = line
         update_vertical_border(line)
         @colors.fill(@registers.border)
         @fg.fill(false)
@@ -72,10 +71,7 @@ module Ruby64
         end
       end
 
-      def emit(screencode, color, col, cell = nil, row = nil)
-        top = display_top
-        row ||= (@line - top) % 8
-        cell ||= (((@line - top) / 8) * 40) + col
+      def emit(screencode, color, col, cell, row)
         MODES[@registers.mode].decode(screencode, color, cell, row, self)
         shift_and_clip(col, (col + 16) * 8)
         roll
@@ -89,8 +85,6 @@ module Ruby64
       end
 
       private
-
-      def display_top = 48 + @registers.yscroll
 
       def shift_and_clip(col, x_pos)
         shift_window(col)
@@ -122,10 +116,10 @@ module Ruby64
 
       def clip(x_pos)
         border = @registers.border
-        graphics_line = line_in_graphics?(@line)
         win_lo, win_hi = DISPLAY_X_BOUNDS[@registers.csel? ? 1 : 0]
         right_compare = win_hi + 1
         gfx_lo, gfx_hi = DISPLAY_X_BOUNDS[1] # full 40 columns, ignoring CSEL
+        gfx_end = gfx_hi + 1
 
         i = 0
         while i < 8
@@ -133,7 +127,7 @@ module Ruby64
           shown = pixel_shown?(x, win_lo, right_compare)
           @colors[x] = shown ? @win_colors[i] : border
           @border[x] = !shown
-          @fg[x] = graphics_line && x >= gfx_lo && x <= gfx_hi ? @win_fg[i] : false
+          @fg[x] = x >= gfx_lo && x < gfx_end ? @win_fg[i] : false
           i += 1
         end
       end
@@ -153,12 +147,6 @@ module Ruby64
         top, bottom = BORDER_Y_BOUNDS[@registers.rsel? ? 1 : 0]
         @vertical_border = true if line == bottom
         @vertical_border = false if line == top && @registers.display_enabled?
-      end
-
-      # The full 25-row graphics region, regardless of the RSEL clip.
-      def line_in_graphics?(line)
-        top = display_top
-        line.between?(top, top + 199)
       end
     end
   end
