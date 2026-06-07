@@ -115,8 +115,8 @@ module Ruby64
       def bitmap_base = (@bytes[0x18] & 0b1000) * 0x400
       def screen_base = (@bytes[0x18] >> 4) * 0x400
 
-      def border = @bytes[0x20]
-      def background(index = 0) = @bytes[0x21 + index]
+      def border = @bytes[0x20] & 0x0f
+      def background(index = 0) = @bytes[0x21 + index] & 0x0f
 
       def raster_target = uint16(@bytes[0x12], (@bytes[0x11] & 0x80) >> 7)
 
