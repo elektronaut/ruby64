@@ -196,7 +196,7 @@ module Ruby64
           0xa8 => new(:tay, :implied),
           0xa9 => new(:lda, :immediate),
           0xaa => new(:tax, :implied),
-          0xab => new(:lax, :immediate, illegal: true),
+          0xab => new(:lxa, :immediate, illegal: true),
           0xac => new(:ldy, :absolute),
           0xad => new(:lda, :absolute),
           0xae => new(:ldx, :absolute),

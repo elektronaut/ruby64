@@ -49,9 +49,7 @@ module Ruby64
           status.overflow = (result ^ tmp).anybits?(0x40)
 
           # Low nibble
-          if ((tmp & 0x0f) + (tmp & 0x01)) > 0x05
-            result = (result & 0xf0) | ((result + 0x06) & 0x0f)
-          end
+          result = (result & 0xf0) | ((result + 0x06) & 0x0f) if ((tmp & 0x0f) + (tmp & 0x01)) > 0x05
 
           # High nibble + carry
           if ((tmp & 0xf0) + (tmp & 0x10)) > 0x50
@@ -121,7 +119,6 @@ module Ruby64
       # Opcodes:
       #   $A3 - indirect_x - 6 cycles
       #   $A7 - zeropage   - 3 cycles
-      #   $AB - immediate  - 2 cycles # TODO: Not working
       #   $AF - absolute   - 4 cycles
       #   $B3 - indirect_y - 5+ cycles
       #   $B7 - zeropage_y - 4 cycles
@@ -129,6 +126,17 @@ module Ruby64
       def lax(_addr, value)
         @a = @x = resolve(value)
 
+        update_number_flags(@a)
+      end
+
+      # Unstable immediate form of LAX. Loads A and X with
+      # (A | magic_const) AND value. Magic constant varies by CPU.
+      #
+      # Opcodes:
+      #   $AB - immediate - 2 cycles
+      def lxa(_addr, value)
+        magic_const = 0xee
+        @a = @x = (a | magic_const) & resolve(value)
         update_number_flags(@a)
       end
 
@@ -190,47 +198,29 @@ module Ruby64
         update_number_flags(@x)
       end
 
-      # Stores A AND X AND (high byte of addr + 1) at addr.
+      # Stores A AND X AND (high byte of base address + 1) at addr.
       #
       # Opcodes:
       #   $93 - indirect_y - 6 cycles
       #   $9F - absolute_y - 5 cycles
       def sha(addr, _value)
-        result = a & x & (high_byte(addr) + 1)
-        target = if boundary_crossed # TODO: This is not quite right.
-                   uint16(low_byte(addr), result & high_byte(addr))
-                 else
-                   addr
-                 end
-        write_byte(target, result)
+        store_high_and(a & x, addr)
       end
 
-      # Stores X AND (high byte of addr + 1) at addr.
+      # Stores X AND (high byte of base address + 1) at addr.
       #
       # Opcodes:
       #   $9E - absolute_y - 5 cycles
       def shx(addr, _value)
-        result = x & (high_byte(addr) + 1)
-        target = if boundary_crossed # TODO: This is not quite right.
-                   uint16(low_byte(addr), result & high_byte(addr))
-                 else
-                   addr
-                 end
-        write_byte(target, result)
+        store_high_and(x, addr)
       end
 
-      # Stores Y AND (high byte of addr + 1) at addr.
+      # Stores Y AND (high byte of base address + 1) at addr.
       #
       # Opcodes:
       #   $9C - absolute_x - 5 cycles
       def shy(addr, _value)
-        result = y & (high_byte(addr) + 1)
-        target = if boundary_crossed # TODO: This is not quite right.
-                   uint16(low_byte(addr), result & high_byte(addr))
-                 else
-                   addr
-                 end
-        write_byte(target, result)
+        store_high_and(y, addr)
       end
 
       # Combination of ASL and ORA operations.
@@ -261,18 +251,26 @@ module Ruby64
         eor(addr, lsr(addr, value))
       end
 
-      # Stores A AND X in SP, then stores SP AND (high byte + 1) at addr.
+      # Stores A AND X in SP, then stores SP AND (high byte of base + 1) at
+      # addr.
       #
       # Opcodes:
       #   $9B - absolute_y - 5 cycles
       def tas(addr, _value)
         @stack_pointer = @a & @x
-        result = stack_pointer & (high_byte(addr) + 1)
-        target = if boundary_crossed # TODO: This is not quite right.
-                   uint16(low_byte(addr), result & high_byte(addr))
-                 else
-                   addr
-                 end
+        store_high_and(stack_pointer, addr)
+      end
+
+      private
+
+      def store_high_and(register, addr)
+        base_high = if boundary_crossed
+                      (high_byte(addr) - 1) & 0xff
+                    else
+                      high_byte(addr)
+                    end
+        result = register & ((base_high + 1) & 0xff)
+        target = boundary_crossed ? uint16(low_byte(addr), result) : addr
         write_byte(target, result)
       end
     end
