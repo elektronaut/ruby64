@@ -8,10 +8,14 @@ module Ruby64
     #
     # Turns fetched graphics data into output pixels.
     class Sequencer
-      # X position bounds of the visible display window, indexed by CSEL.
       DISPLAY_X_BOUNDS = [
         [135, 438].freeze,
         [128, 447].freeze
+      ].freeze
+
+      BORDER_Y_BOUNDS = [
+        [55, 247].freeze,
+        [51, 251].freeze
       ].freeze
 
       NULL_MODE = GraphicsMode::Null.new
@@ -41,12 +45,15 @@ module Ruby64
         @prev_fg = Array.new(8, false)
         @win_colors = Array.new(8, 0)
         @win_fg = Array.new(8, false)
+        @vertical_border = true
         new_line(0)
       end
 
-      # Reset the line buffers at the start of a rasterline.
+      # Reset the line buffers at the start of a rasterline and re-evaluate the
+      # vertical border flip-flop.
       def new_line(line)
         @line = line
+        update_vertical_border(line)
         @colors.fill(@registers.border)
         @fg.fill(false)
         @border.fill(true)
@@ -114,7 +121,6 @@ module Ruby64
 
       def clip(x_pos)
         border = @registers.border
-        shown_line = line_in_display?(@line)
         graphics_line = line_in_graphics?(@line)
         win_lo, win_hi = DISPLAY_X_BOUNDS[@registers.csel? ? 1 : 0]
         gfx_lo, gfx_hi = DISPLAY_X_BOUNDS[1] # full 40 columns, ignoring CSEL
@@ -122,7 +128,7 @@ module Ruby64
         i = 0
         while i < 8
           x = x_pos + i
-          shown = shown_line && x >= win_lo && x <= win_hi
+          shown = !@vertical_border && x >= win_lo && x <= win_hi
           @colors[x] = shown ? @win_colors[i] : border
           @border[x] = !shown
           @fg[x] = graphics_line && x >= gfx_lo && x <= gfx_hi ? @win_fg[i] : false
@@ -135,13 +141,10 @@ module Ruby64
         @prev_fg, @cur_fg = @cur_fg, @prev_fg
       end
 
-      def line_in_display?(line)
-        top = display_top
-        if @registers.rsel?
-          line.between?(top, top + 199)
-        else
-          line.between?(top + 4, top + 195)
-        end
+      def update_vertical_border(line)
+        top, bottom = BORDER_Y_BOUNDS[@registers.rsel? ? 1 : 0]
+        @vertical_border = true if line == bottom
+        @vertical_border = false if line == top && @registers.display_enabled?
       end
 
       # The full 25-row graphics region, regardless of the RSEL clip.

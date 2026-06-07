@@ -380,4 +380,54 @@ RSpec.describe Ruby64::VIC do
       expect(vic.display[(gap_line * vic.width) + ((16 + cell) * 8)]).to eq(bg)
     end
   end
+
+  describe "vertical border flip-flop" do
+    let(:x) { (16 + 10) * 8 } # a pixel well inside the horizontal window
+    let(:border) { 14 }       # default border colour
+
+    before do
+      vic.poke(0xd018, 0x18)
+      vic.poke(0xd021, 6) # background, distinct from the border
+      ram = vic.address_bus.ram
+      256.times { |i| ram.poke(0x0400 + i, 1) }      # screen full of char 1
+      8.times { |r| ram.poke(0x2000 + 8 + r, 0xff) } # char 1 solid in every row
+      vic.address_bus.color_ram.poke(0xd800 + 10, 1)
+    end
+
+    def run_to(line)
+      ((line + 1) * 63).times { vic.cycle! }
+    end
+
+    context "when DEN was clear during the top compare line" do
+      it "draws solid border across the display window" do
+        vic.poke(0xd011, 0x0b) # DEN=0, RSEL=1, YSCROLL=3
+        run_to(100)
+        expect(vic.display[(100 * vic.width) + x]).to eq(border)
+      end
+    end
+
+    context "with YSCROLL=0 (graphics origin moved to raster 48)" do
+      before { vic.poke(0xd011, 0x18) } # DEN=1, RSEL=1, YSCROLL=0
+
+      it "keeps the top border fixed at raster 51, hiding raster 50" do
+        run_to(51)
+        expect(vic.display[(50 * vic.width) + x]).to eq(border)
+      end
+
+      it "opens the display at the fixed raster 51 regardless of YSCROLL" do
+        run_to(51)
+        expect(vic.display[(51 * vic.width) + x]).not_to eq(border)
+      end
+    end
+
+    context "when RSEL is cleared past the RSEL=0 bottom compare" do
+      it "keeps the bottom border open below raster 250" do
+        vic.poke(0xd011, 0x1b)                 # DEN=1, RSEL=1, YSCROLL=3
+        248.times { 63.times { vic.cycle! } }  # through line 247 with RSEL=1
+        vic.poke(0xd011, 0x13)                 # RSEL=0; its bottom (247) is past
+        13.times { 63.times { vic.cycle! } }   # lines 248..260
+        expect(vic.display[(260 * vic.width) + x]).not_to eq(border)
+      end
+    end
+  end
 end
