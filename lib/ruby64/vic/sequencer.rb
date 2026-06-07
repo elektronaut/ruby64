@@ -26,7 +26,7 @@ module Ruby64
         NULL_MODE                                 # 111 invalid
       ].freeze
 
-      attr_reader :colors, :fg, :registers, :bank, :cur_colors, :cur_fg
+      attr_reader :colors, :fg, :border, :registers, :bank, :cur_colors, :cur_fg
 
       def initialize(width, registers, bank)
         @width = width
@@ -34,18 +34,33 @@ module Ruby64
         @bank = bank
         @colors = Array.new(width, 0)
         @fg = Array.new(width, false)
+        @border = Array.new(width, true)
         @cur_colors = Array.new(8, 0)
         @cur_fg = Array.new(8, false)
         @prev_colors = Array.new(8, 0)
         @prev_fg = Array.new(8, false)
+        @win_colors = Array.new(8, 0)
+        @win_fg = Array.new(8, false)
         new_line
       end
 
-      # Reset the rolling cell window at the start of a rasterline so the first
-      # display column bleeds background, never the previous line's content.
+      # Reset the line buffers at the start of a rasterline.
       def new_line
+        @colors.fill(@registers.border)
+        @fg.fill(false)
+        @border.fill(true)
         @prev_colors.fill(@registers.background)
         @prev_fg.fill(false)
+      end
+
+      # Repaint the border over the composited line, hiding the sprites.
+      def apply_border
+        color = @registers.border
+        x = 0
+        while x < @width
+          @colors[x] = color if @border[x]
+          x += 1
+        end
       end
 
       def emit(screencode, color, col, line)
@@ -62,28 +77,47 @@ module Ruby64
       def display_top = 48 + @registers.yscroll
 
       def shift_and_clip(col, x_pos, line)
+        shift_window(col)
+        clip(x_pos, line)
+      end
+
+      # Slice the XSCROLL-shifted pixels out of the rolling window.
+      def shift_window(col)
         shift = @registers.xscroll
-        border = @registers.border
         bg = @registers.background
-        visible = line_in_display?(line)
         bleed = col.positive? # the left column only exists from column 1 on
 
         i = 0
         while i < 8
-          x = x_pos + i
-          if !visible || !in_window?(x)
-            @colors[x] = border
-            @fg[x] = false
-          elsif (src = i - shift) >= 0
-            @colors[x] = @cur_colors[src]
-            @fg[x] = @cur_fg[src]
+          src = i - shift
+          if src >= 0
+            @win_colors[i] = @cur_colors[src]
+            @win_fg[i] = @cur_fg[src]
           elsif bleed
-            @colors[x] = @prev_colors[8 + src]
-            @fg[x] = @prev_fg[8 + src]
+            @win_colors[i] = @prev_colors[8 + src]
+            @win_fg[i] = @prev_fg[8 + src]
           else
-            @colors[x] = bg
-            @fg[x] = false
+            @win_colors[i] = bg
+            @win_fg[i] = false
           end
+          i += 1
+        end
+      end
+
+      def clip(x_pos, line)
+        border = @registers.border
+        shown_line = line_in_display?(line)
+        graphics_line = line_in_graphics?(line)
+        win_lo, win_hi = DISPLAY_X_BOUNDS[@registers.csel? ? 1 : 0]
+        gfx_lo, gfx_hi = DISPLAY_X_BOUNDS[1] # full 40 columns, ignoring CSEL
+
+        i = 0
+        while i < 8
+          x = x_pos + i
+          shown = shown_line && x >= win_lo && x <= win_hi
+          @colors[x] = shown ? @win_colors[i] : border
+          @border[x] = !shown
+          @fg[x] = graphics_line && x >= gfx_lo && x <= gfx_hi ? @win_fg[i] : false
           i += 1
         end
       end
@@ -93,11 +127,6 @@ module Ruby64
         @prev_fg, @cur_fg = @cur_fg, @prev_fg
       end
 
-      def in_window?(pixel_x)
-        x_lo, x_hi = DISPLAY_X_BOUNDS[@registers.csel? ? 1 : 0]
-        pixel_x.between?(x_lo, x_hi)
-      end
-
       def line_in_display?(line)
         top = display_top
         if @registers.rsel?
@@ -105,6 +134,12 @@ module Ruby64
         else
           line.between?(top + 4, top + 195)
         end
+      end
+
+      # The full 25-row graphics region, regardless of the RSEL clip.
+      def line_in_graphics?(line)
+        top = display_top
+        line.between?(top, top + 199)
       end
     end
   end

@@ -9,10 +9,11 @@ module Ruby64
       SPRITE_COLLISION_IRQ = 0x04 # IMMC, mirrors $D01E
       DATA_COLLISION_IRQ   = 0x02 # IMBC, mirrors $D01F
 
-      def initialize(registers, bank)
+      def initialize(registers, bank, width)
         @registers = registers
         @bank = bank
-        @sprites = Array.new(8) { |i| Sprite.new(i, registers, bank) }
+        @width = width
+        @sprites = Array.new(8) { |i| Sprite.new(i, registers, bank, width) }
       end
 
       def [](index) = @sprites[index]
@@ -23,26 +24,41 @@ module Ruby64
 
       def active? = @sprites.any?(&:displaying?)
 
-      def composite(colors, mask, x_start, count)
-        raster_x = x_start
-        last = x_start + count
-        while raster_x < last
-          composite_pixel(colors, mask, raster_x)
+      def composite(colors, mask)
+        active = @sprites.select(&:displaying?)
+        return if active.empty?
+
+        lo, hi = span(active)
+        raster_x = lo
+        while raster_x < hi
+          composite_pixel(active, colors, mask, raster_x)
           raster_x += 1
         end
       end
 
       private
 
-      def composite_pixel(colors, mask, raster_x)
+      def span(active)
+        lo = @width
+        hi = 0
+        active.each do |sprite|
+          left = sprite.leftmost
+          right = left + sprite.pixel_width
+          return [0, @width] if right > @width
+
+          lo = left if left < lo
+          hi = right if right > hi
+        end
+        [lo, hi]
+      end
+
+      def composite_pixel(active, colors, mask, raster_x)
         winner = nil
         winner_color = nil
         hits = 0
         foreground = mask[raster_x]
 
-        @sprites.each do |sprite|
-          next unless sprite.displaying?
-
+        active.each do |sprite|
           color = sprite.pixel(raster_x)
           next if color.nil?
 

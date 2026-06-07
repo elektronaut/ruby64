@@ -23,7 +23,7 @@ module Ruby64
 
       @registers = VIC::Registers.new
       @sequencer = VIC::Sequencer.new(@width, @registers, @vic_bank)
-      @sprites = VIC::Sprites.new(@registers, @vic_bank)
+      @sprites = VIC::Sprites.new(@registers, @vic_bank, @width)
       @display = Array.new(@width * @height, 0)
 
       @position = 0
@@ -44,6 +44,7 @@ module Ruby64
       fetch_character_data! if dma_active?
 
       draw!
+      finish_line! if end_of_line?
 
       @position = (@position + 8) % (width * height)
       nil
@@ -125,25 +126,21 @@ module Ruby64
 
       screencode = @character_buffer[col] || 0
       @sequencer.emit(screencode, @color_buffer[col] || 1, col, line)
-      composite_sprites(pos % @width, 8)
-      flush_cell(pos)
     end
 
-    def composite_sprites(x_start, count)
-      return unless @sprites.active?
+    def end_of_line? = (@position % @width) == @width - 8
 
-      @sprites.composite(@sequencer.colors, @sequencer.fg, x_start, count)
-    end
+    def finish_line!
+      return if vblank?
 
-    # Copy the sequencer's freshly rendered cell from the line buffer into the frame display.
-    def flush_cell(pos)
-      x = pos % @width
-      colors = @sequencer.colors
-      i = 0
-      while i < 8
-        @display[pos + i] = colors[x + i]
-        i += 1
+      # Composite the active sprites over the finished background line
+      # and copy the line into the frame display.
+      if @sprites.active?
+        @sprites.composite(@sequencer.colors, @sequencer.fg)
+        @sequencer.apply_border
       end
+      line = rasterline
+      @display[line * @width, @width] = @sequencer.colors
     end
 
     def video_matrix(index)
@@ -153,7 +150,7 @@ module Ruby64
     def check_raster_irq!
       return unless rasterline == @registers.raster_target
 
-      # Latch the raster IRQ flag; the line asserts via #interrupted? when the
+      # Latch the raster IRQ flag. The line asserts via #interrupted? when the
       # matching mask bit in $D01A is set.
       @registers.latch_raster_irq!
     end

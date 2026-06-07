@@ -236,6 +236,12 @@ RSpec.describe Ruby64::VIC do
       expect(vic.display[(line * vic.width) + (276 + Ruby64::VIC::Sprite::X_OFFSET)])
         .to eq(5)
     end
+
+    it "hides a sprite behind the side border" do
+      vic.poke(0xd000, 0)
+      run_to(line)
+      expect(vic.display[(line * vic.width) + 104]).to eq(14)
+    end
   end
 
   describe "sprite collision IRQ through a full raster" do
@@ -261,6 +267,41 @@ RSpec.describe Ruby64::VIC do
         expect(vic.peek(0xd01e) & 0x03).to eq(0x03)
         expect(vic.interrupted?).to be(true)
       end
+    end
+
+    it "detects a collision in the side border, outside the display window" do
+      vic.poke(0xd000, 420) # raster X 20 (left border, off the visible crop)
+      vic.poke(0xd002, 420)
+      ((line + 1) * 63).times { vic.cycle! }
+      expect(vic.peek(0xd01e) & 0x03).to eq(0x03)
+    end
+  end
+
+  describe "sprite-data collision under the 38-column border" do
+    let(:line) { 52 }
+
+    before do
+      vic.poke(0xd018, 0x18) # screen @ $0400, char @ $2000, ptrs @ $07f8
+      vic.poke(0xd011, 0x1b) # DEN=1, RSEL=1, YSCROLL=3
+      vic.poke(0xd016, 0xc0) # CSEL=38 (column 0 falls under the border)
+      vic.poke(0xd015, 0x01) # enable sprite 0
+      vic.poke(0xd000, 24)   # sprite X 24 -> raster 128 (column 0)
+      vic.poke(0xd001, line)
+      ram = vic.address_bus.ram
+      ram.poke(0x0400, 1)              # column 0 shows character 1
+      ram.poke(0x2000 + 8 + 1, 0x80)   # char 1, row 1: foreground at pixel 0
+      ram.poke(0x07f8, 0x90)           # sprite 0 data @ $2400
+      ram.poke(0x2400, 0x80)           # sprite row 0: pixel 0 set
+    end
+
+    it "sets the sprite-data collision register" do
+      ((line + 1) * 63).times { vic.cycle! }
+      expect(vic.peek(0xd01f) & 0x01).to eq(0x01)
+    end
+
+    it "still shows the border colour over the collision" do
+      ((line + 1) * 63).times { vic.cycle! }
+      expect(vic.display[(line * vic.width) + 128]).to eq(14)
     end
   end
 

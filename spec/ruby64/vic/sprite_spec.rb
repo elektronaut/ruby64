@@ -3,7 +3,7 @@
 require "spec_helper"
 
 RSpec.describe Ruby64::VIC::Sprite do
-  subject(:sprite) { described_class.new(0, registers, bank) }
+  subject(:sprite) { described_class.new(0, registers, bank, 504) }
 
   let(:registers) { Ruby64::VIC::Registers.new }
   let(:bank) { Ruby64::VIC::Bank.new }

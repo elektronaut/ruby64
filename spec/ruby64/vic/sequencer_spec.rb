@@ -64,6 +64,22 @@ RSpec.describe Ruby64::VIC::Sequencer do
     it "marks border pixels as not foreground" do
       expect(render_fg(0xff, line: 10)).to all(be(false))
     end
+
+    describe "under the 38-column border" do
+      before do
+        registers.write(0x16, 0xc0) # CSEL=38, XSCROLL=0
+        put_char(1, 0xff)
+        sequencer.emit(1, 1, 0, 51) # column 0 -> x 128..135; x 128 is clipped
+      end
+
+      it "shows the border colour" do
+        expect(sequencer.colors[128]).to eq(2)
+      end
+
+      it "keeps the graphics foreground-mask" do
+        expect(sequencer.fg[128]).to be(true)
+      end
+    end
   end
 
   describe "border / window clip" do

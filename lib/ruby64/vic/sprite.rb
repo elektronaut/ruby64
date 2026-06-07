@@ -8,10 +8,11 @@ module Ruby64
 
       attr_reader :index
 
-      def initialize(index, registers, bank)
+      def initialize(index, registers, bank, width)
         @index = index
         @registers = registers
         @bank = bank
+        @width = width
         @bit = 1 << index
         @displaying = false
         @counter = 0
@@ -34,6 +35,9 @@ module Ruby64
       def y = @registers[(index * 2) + 1]
       def color = @registers[0x27 + index] & 0x0f
 
+      def leftmost = (x + X_OFFSET) % @width
+      def pixel_width = x_expanded? ? 48 : 24
+
       def start_line(line)
         if !@displaying && enabled? && line == y
           @displaying = true
@@ -55,10 +59,9 @@ module Ruby64
       def pixel(raster_x)
         return nil unless @bits
 
-        left = x + X_OFFSET
-        return nil if raster_x < left
-
-        offset = (raster_x - left) / (x_expanded? ? 2 : 1)
+        dist = raster_x - ((x + X_OFFSET) % @width)
+        dist += @width if dist.negative?
+        offset = x_expanded? ? dist / 2 : dist
         return nil if offset >= 24
 
         multicolor? ? multicolor_pixel(offset) : hires_pixel(offset)
