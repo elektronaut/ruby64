@@ -199,6 +199,71 @@ RSpec.describe Ruby64::VIC do
     end
   end
 
+  describe "sprite rendering through a full raster" do
+    let(:line) { 60 }
+    let(:sprite_x) { 100 }
+    let(:raster_x) { sprite_x + Ruby64::VIC::Sprite::X_OFFSET }
+
+    before do
+      vic.poke(0xd018, 0x18) # screen matrix @ $0400 -> pointers @ $07f8
+      vic.poke(0xd011, 0x1b) # DEN=1, RSEL=1, YSCROLL=3
+      vic.poke(0xd015, 0x01) # enable sprite 0
+      vic.poke(0xd000, sprite_x)
+      vic.poke(0xd001, line)
+      vic.poke(0xd027, 5)    # sprite 0 colour
+      vic.address_bus.ram.poke(0x07f8, 0x80)        # sprite 0 data @ $2000
+      vic.address_bus.ram.poke(0x2000, 0b1000_0000) # row 0, leftmost pixel set
+    end
+
+    def run_to(target)
+      ((target + 1) * 63).times { vic.cycle! }
+    end
+
+    it "draws the sprite pixel into the display at its raster position" do
+      run_to(line)
+      expect(vic.display[(line * vic.width) + raster_x]).to eq(5)
+    end
+
+    it "does not draw the sprite on lines outside its 21-row span" do
+      run_to(line + 21)
+      expect(vic.display[((line + 21) * vic.width) + raster_x]).not_to eq(5)
+    end
+
+    it "places the sprite using the 9th X bit from $D010" do
+      vic.poke(0xd000, 20)
+      vic.poke(0xd010, 0x01) # X = 276
+      run_to(line)
+      expect(vic.display[(line * vic.width) + (276 + Ruby64::VIC::Sprite::X_OFFSET)])
+        .to eq(5)
+    end
+  end
+
+  describe "sprite collision IRQ through a full raster" do
+    let(:line) { 60 }
+
+    before do
+      vic.poke(0xd018, 0x18)
+      vic.poke(0xd011, 0x1b)
+      vic.poke(0xd01a, 0x06) # enable sprite-sprite and sprite-data IRQs
+      vic.poke(0xd015, 0x03) # enable sprites 0 and 1
+      vic.poke(0xd000, 100)
+      vic.poke(0xd001, line)
+      vic.poke(0xd002, 100)  # sprite 1 at the same position
+      vic.poke(0xd003, line)
+      vic.address_bus.ram.poke(0x07f8, 0x80) # both point at $2000
+      vic.address_bus.ram.poke(0x07f9, 0x80)
+      vic.address_bus.ram.poke(0x2000, 0b1000_0000)
+    end
+
+    it "raises a sprite-sprite collision and asserts the IRQ line" do
+      ((line + 1) * 63).times { vic.cycle! }
+      aggregate_failures do
+        expect(vic.peek(0xd01e) & 0x03).to eq(0x03)
+        expect(vic.interrupted?).to be(true)
+      end
+    end
+  end
+
   describe "#dma_active?" do
     subject { vic.dma_active? }
 

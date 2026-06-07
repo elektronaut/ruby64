@@ -84,6 +84,7 @@ module Ruby64
       def read(reg)
         case reg
         when 0x1a, 0x20..0x2e then @bytes[reg] | 0xf0
+        when 0x1e, 0x1f then read_clear(reg) # collision registers clear on read
         when 0x2f..0x3f then 0xff
         else @bytes[reg]
         end
@@ -118,9 +119,23 @@ module Ruby64
       def background(index = 0) = @bytes[0x21 + index]
 
       def raster_target = uint16(@bytes[0x12], (@bytes[0x11] & 0x80) >> 7)
-      def latch_raster_irq! = @bytes[0x19] |= 0x01
+
+      def latch_irq!(bit) = @bytes[0x19] |= bit
+      def latch_raster_irq! = latch_irq!(0x01)
+
+      def collide!(reg, bits)
+        return false if bits.zero?
+
+        was_zero = @bytes[reg].zero?
+        @bytes[reg] |= bits
+        was_zero
+      end
 
       private
+
+      def read_clear(reg)
+        @bytes[reg].tap { @bytes[reg] = 0 }
+      end
 
       def write_defaults
         write_each(0x20, [14, 6, 1, 2, 3, 4, 0, 1, 2, 3, 4, 5, 6, 7, 12])

@@ -3,6 +3,7 @@
 require "ruby64/vic/bank"
 require "ruby64/vic/registers"
 require "ruby64/vic/sequencer"
+require "ruby64/vic/sprites"
 
 module Ruby64
   class VIC < Cycleable
@@ -22,6 +23,7 @@ module Ruby64
 
       @registers = VIC::Registers.new
       @sequencer = VIC::Sequencer.new(@width, @registers, @vic_bank)
+      @sprites = VIC::Sprites.new(@registers, @vic_bank)
       @display = Array.new(@width * @height, 0)
 
       @position = 0
@@ -36,6 +38,7 @@ module Ruby64
       if beginning_of_line?
         check_raster_irq!
         @sequencer.new_line
+        @sprites.start_line(rasterline)
       end
 
       fetch_character_data! if dma_active?
@@ -122,7 +125,14 @@ module Ruby64
 
       screencode = @character_buffer[col] || 0
       @sequencer.emit(screencode, @color_buffer[col] || 1, col, line)
+      composite_sprites(pos % @width, 8)
       flush_cell(pos)
+    end
+
+    def composite_sprites(x_start, count)
+      return unless @sprites.active?
+
+      @sprites.composite(@sequencer.colors, @sequencer.fg, x_start, count)
     end
 
     # Copy the sequencer's freshly rendered cell from the line buffer into the frame display.
