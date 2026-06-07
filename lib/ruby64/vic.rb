@@ -91,6 +91,13 @@ module Ruby64
       c >= 15 && c < 55
     end
 
+    def ba_low?
+      return false unless @display_state.bad_line?
+
+      c = column
+      c >= 13 && c < 56
+    end
+
     def hblank?
       c = column
       c < 10 || c > 60

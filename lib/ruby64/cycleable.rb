@@ -7,6 +7,7 @@ module Ruby64
     def initialize
       @loop = Fiber.new { loop { main_loop } }
       @cycles = 0
+      @pending_write = false
     end
 
     def cycle!
@@ -14,12 +15,16 @@ module Ruby64
       nil
     end
 
+    def pending_write? = @pending_write
+
     private
 
-    def cycle
+    def cycle(write: false)
+      @pending_write = write
       Fiber.yield
       result = yield if block_given?
       @cycles += 1
+      @pending_write = false
       result
     end
 

@@ -34,7 +34,7 @@ module Ruby64
       @cpu.nmi = true if @cia2.interrupted? && !@nmi_asserted
       @nmi_asserted = @cia2.interrupted?
 
-      @cpu.cycle! unless @vic.dma_active?
+      @cpu.cycle! if @cpu.pending_write? || !@vic.ba_low?
 
       @cycles += 1
     end

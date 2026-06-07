@@ -234,7 +234,7 @@ module Ruby64
       if addr == :accumulator
         @a = value
       else
-        cycle { memory[addr] = value }
+        cycle(write: true) { memory[addr] = value }
       end
     end
   end

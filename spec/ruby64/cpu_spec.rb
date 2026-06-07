@@ -75,6 +75,26 @@ describe Ruby64::CPU do
     end
   end
 
+  describe "#pending_write?" do
+    # STA $10: fetch (read), operand (read), store (write).
+    before { memory.write(start_addr, [0x85, 0x10]) }
+
+    it "is false while a read cycle is pending" do
+      cpu.cycle! # paused before the operand read
+      expect(cpu.pending_write?).to be(false)
+    end
+
+    it "is true while a write cycle is pending" do
+      2.times { cpu.cycle! } # paused before the store
+      expect(cpu.pending_write?).to be(true)
+    end
+
+    it "clears again once the write has run" do
+      3.times { cpu.cycle! } # store completed, next opcode fetch pending
+      expect(cpu.pending_write?).to be(false)
+    end
+  end
+
   describe "ADC" do
     before { cpu.a = 0x01 }
 

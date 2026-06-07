@@ -353,6 +353,60 @@ RSpec.describe Ruby64::VIC do
     end
   end
 
+  describe "#ba_low?" do
+    subject { vic.ba_low? }
+
+    let(:rasterline) { 59 }
+    let(:rasterline_cycle) { 20 }
+    let(:d011) { 0x1b } # DEN=1, RSEL=1, YSCROLL=3
+
+    before do
+      vic.poke(0xd011, d011)
+      vic.poke(0xd016, 0x08) # Text mode
+      ((rasterline * 63) + rasterline_cycle).times { vic.cycle! }
+    end
+
+    context "when on a bad line during the c-accesses" do
+      it { is_expected.to be(true) }
+    end
+
+    context "when three cycles before the first c-access" do
+      let(:rasterline_cycle) { 13 }
+
+      it { is_expected.to be(true) }
+    end
+
+    context "when before BA is asserted" do
+      let(:rasterline_cycle) { 12 }
+
+      it { is_expected.to be(false) }
+    end
+
+    context "when on the final c-access" do
+      let(:rasterline_cycle) { 55 }
+
+      it { is_expected.to be(true) }
+    end
+
+    context "when after BA is released" do
+      let(:rasterline_cycle) { 56 }
+
+      it { is_expected.to be(false) }
+    end
+
+    context "when not on a bad line" do
+      let(:rasterline) { 50 }
+
+      it { is_expected.to be(false) }
+    end
+
+    context "when display was disabled during raster line $30" do
+      let(:d011) { 0x0b } # DEN=0 from power-on, so the bad-line latch never sets
+
+      it { is_expected.to be(false) }
+    end
+  end
+
   describe "FLD: withholding bad lines opens an idle gap" do
     let(:bg) { 6 }
     let(:fg) { 1 }
