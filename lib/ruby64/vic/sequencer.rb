@@ -41,11 +41,12 @@ module Ruby64
         @prev_fg = Array.new(8, false)
         @win_colors = Array.new(8, 0)
         @win_fg = Array.new(8, false)
-        new_line
+        new_line(0)
       end
 
       # Reset the line buffers at the start of a rasterline.
-      def new_line
+      def new_line(line)
+        @line = line
         @colors.fill(@registers.border)
         @fg.fill(false)
         @border.fill(true)
@@ -63,12 +64,19 @@ module Ruby64
         end
       end
 
-      def emit(screencode, color, col, line)
+      def emit(screencode, color, col, cell = nil, row = nil)
         top = display_top
-        row = (line - top) % 8
-        cell = (((line - top) / 8) * 40) + col
+        row ||= (@line - top) % 8
+        cell ||= (((@line - top) / 8) * 40) + col
         MODES[@registers.mode].decode(screencode, color, cell, row, self)
-        shift_and_clip(col, (col + 16) * 8, line)
+        shift_and_clip(col, (col + 16) * 8)
+        roll
+      end
+
+      def emit_idle(col)
+        @cur_colors.fill(@registers.background)
+        @cur_fg.fill(false)
+        shift_and_clip(col, (col + 16) * 8)
         roll
       end
 
@@ -76,9 +84,9 @@ module Ruby64
 
       def display_top = 48 + @registers.yscroll
 
-      def shift_and_clip(col, x_pos, line)
+      def shift_and_clip(col, x_pos)
         shift_window(col)
-        clip(x_pos, line)
+        clip(x_pos)
       end
 
       # Slice the XSCROLL-shifted pixels out of the rolling window.
@@ -104,10 +112,10 @@ module Ruby64
         end
       end
 
-      def clip(x_pos, line)
+      def clip(x_pos)
         border = @registers.border
-        shown_line = line_in_display?(line)
-        graphics_line = line_in_graphics?(line)
+        shown_line = line_in_display?(@line)
+        graphics_line = line_in_graphics?(@line)
         win_lo, win_hi = DISPLAY_X_BOUNDS[@registers.csel? ? 1 : 0]
         gfx_lo, gfx_hi = DISPLAY_X_BOUNDS[1] # full 40 columns, ignoring CSEL
 

@@ -22,17 +22,18 @@ RSpec.describe Ruby64::VIC::Sequencer do
   def emit_cell(screencode, bits, at, xscroll: 0)
     registers.write(0x16, 0xc8 | xscroll)
     put_char(screencode, bits)
-    sequencer.emit(screencode, 1, at, 51)
+    sequencer.emit(screencode, 1, at)
   end
 
   def render(bits, xscroll: 0, prev_bits: nil, line: 51)
     registers.write(0x16, 0xc8 | xscroll) # keep CSEL (40 cols), set XSCROLL
     put_char(1, bits)
+    sequencer.new_line(line)
     if prev_bits
       put_char(2, prev_bits)
-      sequencer.emit(2, 1, col - 1, line)
+      sequencer.emit(2, 1, col - 1)
     end
-    sequencer.emit(1, 1, col, line)
+    sequencer.emit(1, 1, col)
     sequencer.colors[x_pos, 8]
   end
 
@@ -69,7 +70,8 @@ RSpec.describe Ruby64::VIC::Sequencer do
       before do
         registers.write(0x16, 0xc0) # CSEL=38, XSCROLL=0
         put_char(1, 0xff)
-        sequencer.emit(1, 1, 0, 51) # column 0 -> x 128..135; x 128 is clipped
+        sequencer.new_line(51)
+        sequencer.emit(1, 1, 0) # column 0 -> x 128..135; x 128 is clipped
       end
 
       it "shows the border colour" do
@@ -94,7 +96,8 @@ RSpec.describe Ruby64::VIC::Sequencer do
     it "renders border for columns outside the horizontal window" do
       registers.write(0x16, 0xc8) # CSEL=40, XSCROLL=0
       put_char(1, 0xff)
-      sequencer.emit(1, 1, -16, 51) # column -16 maps to x 0 (border)
+      sequencer.new_line(51)
+      sequencer.emit(1, 1, -16) # column -16 maps to x 0 (border)
       expect(sequencer.colors[0, 8]).to all(eq(2))
     end
   end
@@ -138,8 +141,9 @@ RSpec.describe Ruby64::VIC::Sequencer do
 
     describe "#new_line" do
       it "clears the rolling window so the next line does not bleed" do
+        sequencer.new_line(51)
         emit_cell(1, 0b0000_0001, col - 1) # set rightmost pixel in the window
-        sequencer.new_line
+        sequencer.new_line(51)
         emit_cell(2, 0, col, xscroll: 1)
         expect(sequencer.colors[x_pos]).to eq(6)
       end

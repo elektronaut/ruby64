@@ -2,6 +2,7 @@
 
 require "ruby64/vic/bank"
 require "ruby64/vic/registers"
+require "ruby64/vic/display_state"
 require "ruby64/vic/sequencer"
 require "ruby64/vic/sprites"
 
@@ -22,6 +23,7 @@ module Ruby64
       @height = 312
 
       @registers = VIC::Registers.new
+      @display_state = VIC::DisplayState.new(@registers)
       @sequencer = VIC::Sequencer.new(@width, @registers, @vic_bank)
       @sprites = VIC::Sprites.new(@registers, @vic_bank, @width)
       @display = Array.new(@width * @height, 0)
@@ -36,10 +38,14 @@ module Ruby64
 
     def cycle!
       if beginning_of_line?
+        @display_state.new_frame if rasterline.zero?
         check_raster_irq!
-        @sequencer.new_line
+        @sequencer.new_line(rasterline)
         @sprites.start_line(rasterline)
+        @display_state.new_line
       end
+
+      @display_state.cycle(rasterline, column)
 
       fetch_character_data! if dma_active?
 
@@ -79,7 +85,7 @@ module Ruby64
     end
 
     def dma_active?
-      return false unless bad_line?
+      return false unless @display_state.bad_line?
 
       c = column
       c >= 15 && c < 55
@@ -105,27 +111,19 @@ module Ruby64
       (position % width).zero?
     end
 
-    def char_row
-      (rasterline - display_top) / 8
-    end
-
-    def char_column
-      column - 16
-    end
-
-    def char_index
-      (char_row * 40) + char_column
-    end
-
     def draw!
       return if blanking?
 
-      pos = @position
-      line = pos / @width
-      col = ((pos % @width) / 8) - 16
+      col = column - 16
+      unless @display_state.display?
+        @sequencer.emit_idle(col)
+        return
+      end
 
+      cell = (@display_state.vc_base + col) & 0x3ff
       screencode = @character_buffer[col] || 0
-      @sequencer.emit(screencode, @color_buffer[col] || 1, col, line)
+      @sequencer.emit(screencode, @color_buffer[col] || 1, col,
+                      cell, @display_state.rc)
     end
 
     def end_of_line? = (@position % @width) == @width - 8
@@ -159,22 +157,11 @@ module Ruby64
       (@registers[0x19] & 0x0f) | 0x70 | (interrupted? ? 0x80 : 0)
     end
 
-    def bad_line?
-      return false unless @registers.display_enabled?
-
-      r = rasterline
-      return false unless r.between?(48, 247)
-
-      (r & 0b111) == @registers.yscroll
-    end
-
     def fetch_character_data!
-      @character_buffer[char_column + 1] = video_matrix(char_index + 1)
-      @color_buffer[char_column + 1] = vic_bank.peek_color(char_index + 1)
-    end
-
-    def display_top
-      48 + @registers.yscroll
+      vmli = column - 15
+      vc = (@display_state.vc_base + vmli) & 0x3ff
+      @character_buffer[vmli] = video_matrix(vc)
+      @color_buffer[vmli] = vic_bank.peek_color(vc)
     end
   end
 end

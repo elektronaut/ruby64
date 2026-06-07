@@ -310,9 +310,10 @@ RSpec.describe Ruby64::VIC do
 
     let(:rasterline) { 59 }
     let(:rasterline_cycle) { 20 }
+    let(:d011) { 0x1b } # DEN=1, RSEL=1, YSCROLL=3
 
     before do
-      vic.poke(0xd011, 0x1b) # DEN=1, RSEL=1, YSCROLL=3
+      vic.poke(0xd011, d011)
       vic.poke(0xd016, 0x08) # Text mode
       ((rasterline * 63) + rasterline_cycle).times { vic.cycle! }
     end
@@ -345,10 +346,38 @@ RSpec.describe Ruby64::VIC do
       it { is_expected.to be(false) }
     end
 
-    context "when display is disabled" do
-      before { vic.poke(0xd011, 0x0b) }
+    context "when display was disabled during raster line $30" do
+      let(:d011) { 0x0b } # DEN=0 from power-on, so the bad-line latch never sets
 
       it { is_expected.to be(false) }
+    end
+  end
+
+  describe "FLD: withholding bad lines opens an idle gap" do
+    let(:bg) { 6 }
+    let(:fg) { 1 }
+    let(:cell) { 10 }
+    let(:gap_line) { 80 } # well inside the display area
+
+    before do
+      vic.poke(0xd018, 0x18) # screen @ $0400, char @ $2000
+      vic.poke(0xd011, 0x1b) # DEN=1, RSEL=1, YSCROLL=3
+      vic.poke(0xd021, bg)
+      ram = vic.address_bus.ram
+      256.times { |i| ram.poke(0x0400 + i, 1) }      # screen full of char 1
+      8.times { |r| ram.poke(0x2000 + 8 + r, 0xff) } # char 1 solid in every row
+      vic.address_bus.color_ram.poke(0xd800 + cell, fg)
+    end
+
+    it "renders the gap line as background, not character graphics" do
+      # Run normally up to the first bad line, then keep YSCROLL mismatched so no
+      # further bad line occurs and the chip slips into idle state.
+      (0..gap_line).each do |line|
+        vic.poke(0xd011, 0x18 | ((line + 1) & 0b111)) if line > 52
+        63.times { vic.cycle! }
+      end
+
+      expect(vic.display[(gap_line * vic.width) + ((16 + cell) * 8)]).to eq(bg)
     end
   end
 end
