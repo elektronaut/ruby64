@@ -111,6 +111,7 @@ module Ruby64
       def display_enabled? = @bytes[0x11].anybits?(0x10)
 
       def char_base = (@bytes[0x18] & 0b1110) * 0x400
+      def bitmap_base = (@bytes[0x18] & 0b1000) * 0x400
       def screen_base = (@bytes[0x18] >> 4) * 0x400
 
       def border = @bytes[0x20]

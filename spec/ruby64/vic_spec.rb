@@ -153,6 +153,52 @@ RSpec.describe Ruby64::VIC do
     end
   end
 
+  describe "standard bitmap mode through a bad-line DMA fetch" do
+    let(:raster) { 52 }
+    let(:col) { 10 }
+
+    before do
+      vic.poke(0xd018, 0x18) # screen matrix @ $0400, bitmap @ $2000
+      vic.poke(0xd011, 0x3b) # DEN=1, BMM=1, RSEL=1, YSCROLL=3
+    end
+
+    def render_col
+      ((raster + 1) * 63).times { vic.cycle! }
+      vic.display[(raster * vic.width) + ((col + 16) * 8), 8]
+    end
+
+    it "draws the high nibble for set bits and the low nibble for clear bits" do
+      vic.address_bus.ram.poke(0x0400 + col, 0x4a) # fg 4, bg 10
+      vic.address_bus.ram.poke(0x2000 + (col * 8) + 1, 0b1000_0001)
+      expect(render_col).to eq([4, 10, 10, 10, 10, 10, 10, 4])
+    end
+  end
+
+  describe "multicolour bitmap mode through a bad-line DMA fetch" do
+    let(:raster) { 52 }
+    let(:col) { 10 }
+
+    before do
+      vic.poke(0xd018, 0x18) # screen matrix @ $0400, bitmap @ $2000
+      vic.poke(0xd011, 0x3b) # DEN=1, BMM=1, RSEL=1, YSCROLL=3
+      vic.poke(0xd016, 0xd8) # MCM=1, CSEL=40, XSCROLL=0
+      vic.poke(0xd021, 6)    # background 0
+    end
+
+    def render_col
+      ((raster + 1) * 63).times { vic.cycle! }
+      vic.display[(raster * vic.width) + ((col + 16) * 8), 8]
+    end
+
+    # pairs: 00->bg0(6) 01->matrix high(3) 10->matrix low(5) 11->colour RAM(9)
+    it "decodes pairs from background, video-matrix nibbles and colour RAM" do
+      vic.address_bus.ram.poke(0x0400 + col, 0x35)
+      vic.address_bus.color_ram.poke(0xd800 + col, 9)
+      vic.address_bus.ram.poke(0x2000 + (col * 8) + 1, 0b00_01_10_11)
+      expect(render_col).to eq([6, 6, 3, 3, 5, 5, 9, 9])
+    end
+  end
+
   describe "#dma_active?" do
     subject { vic.dma_active? }
 

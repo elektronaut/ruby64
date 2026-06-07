@@ -18,8 +18,8 @@ module Ruby64
       MODES = [
         GraphicsMode::Text.new,                   # 000 standard text
         GraphicsMode::MulticolorText.new,         # 001 multicolour text
-        NULL_MODE,                                # 010 standard bitmap
-        NULL_MODE,                                # 011 multicolour bitmap
+        GraphicsMode::Bitmap.new,                 # 010 standard bitmap
+        GraphicsMode::MulticolorBitmap.new,       # 011 multicolour bitmap
         GraphicsMode::ExtendedBackgroundText.new, # 100 ECM text
         NULL_MODE,                                # 101 invalid
         NULL_MODE,                                # 110 invalid
@@ -48,13 +48,18 @@ module Ruby64
         @prev_fg.fill(false)
       end
 
-      def emit(screencode, color, col, line, row)
-        MODES[@registers.mode].decode(screencode, color, row, self)
+      def emit(screencode, color, col, line)
+        top = display_top
+        row = (line - top) % 8
+        cell = (((line - top) / 8) * 40) + col
+        MODES[@registers.mode].decode(screencode, color, cell, row, self)
         shift_and_clip(col, (col + 16) * 8, line)
         roll
       end
 
       private
+
+      def display_top = 48 + @registers.yscroll
 
       def shift_and_clip(col, x_pos, line)
         shift = @registers.xscroll
@@ -94,7 +99,7 @@ module Ruby64
       end
 
       def line_in_display?(line)
-        top = 48 + @registers.yscroll
+        top = display_top
         if @registers.rsel?
           line.between?(top, top + 199)
         else

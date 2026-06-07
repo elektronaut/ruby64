@@ -22,7 +22,7 @@ RSpec.describe Ruby64::VIC::Sequencer do
   def emit_cell(screencode, bits, at, xscroll: 0)
     registers.write(0x16, 0xc8 | xscroll)
     put_char(screencode, bits)
-    sequencer.emit(screencode, 1, at, 51, 0)
+    sequencer.emit(screencode, 1, at, 51)
   end
 
   def render(bits, xscroll: 0, prev_bits: nil, line: 51)
@@ -30,9 +30,9 @@ RSpec.describe Ruby64::VIC::Sequencer do
     put_char(1, bits)
     if prev_bits
       put_char(2, prev_bits)
-      sequencer.emit(2, 1, col - 1, line, 0)
+      sequencer.emit(2, 1, col - 1, line)
     end
-    sequencer.emit(1, 1, col, line, 0)
+    sequencer.emit(1, 1, col, line)
     sequencer.colors[x_pos, 8]
   end
 
@@ -78,7 +78,7 @@ RSpec.describe Ruby64::VIC::Sequencer do
     it "renders border for columns outside the horizontal window" do
       registers.write(0x16, 0xc8) # CSEL=40, XSCROLL=0
       put_char(1, 0xff)
-      sequencer.emit(1, 1, -16, 51, 0) # column -16 maps to x 0 (border)
+      sequencer.emit(1, 1, -16, 51) # column -16 maps to x 0 (border)
       expect(sequencer.colors[0, 8]).to all(eq(2))
     end
   end

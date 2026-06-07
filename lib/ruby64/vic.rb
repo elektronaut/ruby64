@@ -119,10 +119,9 @@ module Ruby64
       pos = @position
       line = pos / @width
       col = ((pos % @width) / 8) - 16
-      row = (line - display_top) % 8
 
       screencode = @character_buffer[col] || 0
-      @sequencer.emit(screencode, @color_buffer[col] || 1, col, line, row)
+      @sequencer.emit(screencode, @color_buffer[col] || 1, col, line)
       flush_cell(pos)
     end
 
