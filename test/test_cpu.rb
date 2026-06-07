@@ -13,7 +13,7 @@ SAMPLE_SIZE = 100
 
 TESTS = opcodes.flat_map do |opcode|
   name = opcode.to_s(16).rjust(2, "0")
-  tests = JSON.parse(File.read("test/fixtures/65x02/#{name}.json"))
+  tests = JSON.parse(File.read("test/fixtures/65x02/6502/v1/#{name}.json"))
   tests = tests.sample(SAMPLE_SIZE) if SAMPLE_SIZE
   tests
 end
@@ -76,9 +76,7 @@ class TestCPU < Minitest::Test
       cpu.step!
 
       assert_registers(test["final"], cpu)
-      if TEST_CYCLES
-        assert_equal(test["cycles"].length, cpu.cycles, "Cycle count")
-      end
+      assert_equal(test["cycles"].length, cpu.cycles, "Cycle count") if TEST_CYCLES
 
       assert_memory(test["final"]["ram"], cpu.memory)
     end
