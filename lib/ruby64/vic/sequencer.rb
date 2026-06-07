@@ -46,6 +46,7 @@ module Ruby64
         @win_colors = Array.new(8, 0)
         @win_fg = Array.new(8, false)
         @vertical_border = true
+        @main_border = true
         new_line(0)
       end
 
@@ -123,17 +124,24 @@ module Ruby64
         border = @registers.border
         graphics_line = line_in_graphics?(@line)
         win_lo, win_hi = DISPLAY_X_BOUNDS[@registers.csel? ? 1 : 0]
+        right_compare = win_hi + 1
         gfx_lo, gfx_hi = DISPLAY_X_BOUNDS[1] # full 40 columns, ignoring CSEL
 
         i = 0
         while i < 8
           x = x_pos + i
-          shown = !@vertical_border && x >= win_lo && x <= win_hi
+          shown = pixel_shown?(x, win_lo, right_compare)
           @colors[x] = shown ? @win_colors[i] : border
           @border[x] = !shown
           @fg[x] = graphics_line && x >= gfx_lo && x <= gfx_hi ? @win_fg[i] : false
           i += 1
         end
+      end
+
+      def pixel_shown?(pixel_x, left_compare, right_compare)
+        @main_border = true if pixel_x == right_compare
+        @main_border = false if pixel_x == left_compare && !@vertical_border
+        !(@main_border || @vertical_border)
       end
 
       def roll

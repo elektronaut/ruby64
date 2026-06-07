@@ -19,20 +19,18 @@ RSpec.describe Ruby64::VIC::Sequencer do
     bank.address_bus.ram.poke(screencode * 8, bits)
   end
 
-  def emit_cell(screencode, bits, at, xscroll: 0)
-    registers.write(0x16, 0xc8 | xscroll)
-    put_char(screencode, bits)
-    sequencer.emit(screencode, 1, at)
+  def warm_columns
+    (0...(col - 1)).each { |c| sequencer.emit(0, 1, c) }
   end
 
   def render(bits, xscroll: 0, prev_bits: nil, line: 51)
     registers.write(0x16, 0xc8 | xscroll) # keep CSEL (40 cols), set XSCROLL
+    put_char(0, 0)
     put_char(1, bits)
+    put_char(2, prev_bits || 0)
     sequencer.new_line(line)
-    if prev_bits
-      put_char(2, prev_bits)
-      sequencer.emit(2, 1, col - 1)
-    end
+    warm_columns
+    sequencer.emit(prev_bits ? 2 : 0, 1, col - 1)
     sequencer.emit(1, 1, col)
     sequencer.colors[x_pos, 8]
   end
@@ -140,13 +138,33 @@ RSpec.describe Ruby64::VIC::Sequencer do
     end
 
     describe "#new_line" do
-      it "clears the rolling window so the next line does not bleed" do
+      it "repaints the whole line in the border colour" do
         sequencer.new_line(51)
-        emit_cell(1, 0b0000_0001, col - 1) # set rightmost pixel in the window
-        sequencer.new_line(51)
-        emit_cell(2, 0, col, xscroll: 1)
-        expect(sequencer.colors[x_pos]).to eq(6)
+        expect(sequencer.colors).to all(eq(2))
       end
+    end
+  end
+
+  describe "horizontal border flip-flop" do
+    def paint_line(switch_at: nil, switch_to: nil)
+      put_char(1, 0xff)
+      sequencer.new_line(51)
+      (-6..44).each do |c|
+        registers.write(0x16, switch_to) if switch_at && c == switch_at
+        sequencer.emit(1, 1, c)
+      end
+    end
+
+    it "closes the right border at the 40-column compare on a normal line" do
+      registers.write(0x16, 0xc8) # CSEL=40 throughout
+      paint_line
+      expect(sequencer.colors[450]).to eq(2) # x 450 is right border
+    end
+
+    it "leaves the right border open when the right compare is skipped" do
+      registers.write(0x16, 0xc8) # start at CSEL=40
+      paint_line(switch_at: 39, switch_to: 0xc0)
+      expect(sequencer.colors[450]).to eq(1) # graphics, not border
     end
   end
 end
