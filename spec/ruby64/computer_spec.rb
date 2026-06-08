@@ -103,5 +103,25 @@ RSpec.describe Ruby64::Computer do
         expect(computer.ram.peek(0x3000)).to eq(1)
       end
     end
+
+    context "with an acknowledged VIC raster IRQ" do
+      before do
+        computer.address_bus.poke(0x01, 0x05) # I/O mapped, ROMs as RAM
+        load(0x1000, [0x4c, 0x00, 0x10]) # JMP $1000 (idle loop)
+        # handler: LDA #$01; STA $D019 (ack); INC $3000; CLI; RTI
+        load(0x2000, [0xa9, 0x01, 0x8d, 0x19, 0xd0, 0xee, 0x00, 0x30, 0x58, 0x40])
+        load(0xfffe, [0x00, 0x20]) # IRQ vector -> $2000
+        computer.cpu.program_counter = 0x1000
+        computer.cpu.status.interrupt = false
+        computer.vic.poke(0xd01a, 0x01) # enable raster IRQ
+        computer.vic.poke(0xd012, 0x20) # raster compare = line 32
+      end
+
+      it "takes the IRQ only once after the handler acknowledges it" do
+        (40 * 63).times { computer.cycle! } # past the compare line, one frame
+
+        expect(computer.ram.peek(0x3000)).to eq(1)
+      end
+    end
   end
 end

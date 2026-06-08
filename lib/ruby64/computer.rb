@@ -29,7 +29,7 @@ module Ruby64
       @cia1.cycle!
       @cia2.cycle!
 
-      @cpu.irq = true if @cia1.interrupted? || @vic.interrupted?
+      @cpu.irq = @cia1.interrupted? || @vic.interrupted?
 
       @cpu.nmi = true if @cia2.interrupted? && !@nmi_asserted
       @nmi_asserted = @cia2.interrupted?
