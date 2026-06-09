@@ -11,7 +11,8 @@ module Ruby64
     include Addressable
     include IntegerHelper
 
-    attr_reader :address_bus, :display, :position, :width, :height, :vic_bank
+    attr_reader :address_bus, :display, :width, :height, :vic_bank, :column,
+                :rasterline
 
     SPRITE_BA_RANGES = [
       55..59, 57..61, 59..62,
@@ -33,7 +34,10 @@ module Ruby64
       @sprites = VIC::Sprites.new(@registers, @vic_bank, @width)
       @display = Array.new(@width * @height, 0)
 
-      @position = 0
+      @column = 0
+      @rasterline = 0
+      @columns_per_line = @width / 8
+      @last_line = @height - 1
 
       @character_buffer = Array.new(40, 0)
       @color_buffer = Array.new(40, 0)
@@ -43,30 +47,34 @@ module Ruby64
     end
 
     def cycle!
-      if beginning_of_line?
-        @display_state.new_frame if rasterline.zero?
+      if @column.zero?
+        @display_state.new_frame if @rasterline.zero?
         check_raster_irq!
-        @sequencer.new_line(rasterline)
-        @sprites.start_line(rasterline)
+        @sequencer.new_line(@rasterline)
+        @sprites.start_line(@rasterline)
         rebuild_sprite_ba
         @display_state.new_line
       end
 
-      @display_state.cycle(rasterline, column)
+      @display_state.cycle(@rasterline, @column)
 
       fetch_character_data! if dma_active?
 
       draw!
-      finish_line! if end_of_line?
 
-      @position = (@position + 8) % (width * height)
+      @column += 1
+      if @column == @columns_per_line
+        finish_line!
+        @column = 0
+        @rasterline = @rasterline == @last_line ? 0 : @rasterline + 1
+      end
       nil
     end
 
     # The IRQ line is held asserted while any enabled latch bit is set in
     # $D019/$D01A, until the program acknowledges it by writing to $D019.
     def interrupted?
-      (@registers[0x19] & @registers[0x1a]).anybits?(0x0f)
+      @registers.irq_line?
     end
 
     def peek(addr)
@@ -83,47 +91,33 @@ module Ruby64
       @registers.write(index(addr) % (2**6), value)
     end
 
-    def column
-      (position % width) / 8
-    end
-
-    def rasterline
-      position / width
+    def position
+      (@rasterline * @width) + (@column * 8)
     end
 
     def dma_active?
-      return false unless @display_state.bad_line?
-
-      c = column
-      c >= 15 && c < 55
+      @display_state.bad_line? && @column >= 15 && @column < 55
     end
 
     def ba_low?
-      c = column
-      return true if @sprite_ba[c]
+      return true if @sprite_ba[@column]
 
-      @display_state.bad_line? && c >= 13 && c < 56
+      @display_state.bad_line? && @column >= 13 && @column < 56
     end
 
     def hblank?
-      c = column
-      c < 10 || c > 60
+      @column < 10 || @column > 60
     end
 
     def vblank?
-      r = rasterline
-      r < 16 || r > 299
+      @rasterline < 16 || @rasterline > 299
     end
 
     def blanking?
-      vblank? || hblank?
+      @rasterline < 16 || @rasterline > 299 || @column < 10 || @column > 60
     end
 
     private
-
-    def beginning_of_line?
-      (position % width).zero?
-    end
 
     def rebuild_sprite_ba
       @sprite_ba.fill(false)
@@ -137,7 +131,7 @@ module Ruby64
     def draw!
       return if blanking?
 
-      col = column - 16
+      col = @column - 16
       unless @display_state.display?
         @sequencer.emit_idle(col)
         return
@@ -149,8 +143,6 @@ module Ruby64
                       cell, @display_state.rc)
     end
 
-    def end_of_line? = (@position % @width) == @width - 8
-
     def finish_line!
       return if vblank?
 
@@ -160,8 +152,7 @@ module Ruby64
         @sprites.composite(@sequencer.colors, @sequencer.fg)
         @sequencer.apply_border
       end
-      line = rasterline
-      @display[line * @width, @width] = @sequencer.colors
+      @display[@rasterline * @width, @width] = @sequencer.colors
     end
 
     def video_matrix(index)
@@ -169,7 +160,7 @@ module Ruby64
     end
 
     def check_raster_irq!
-      return unless rasterline == @registers.raster_target
+      return unless @rasterline == @registers.raster_target
 
       # Latch the raster IRQ flag. The line asserts via #interrupted? when the
       # matching mask bit in $D01A is set.
@@ -181,7 +172,7 @@ module Ruby64
     end
 
     def fetch_character_data!
-      vmli = column - 15
+      vmli = @column - 15
       vc = (@display_state.vc_base + vmli) & 0x3ff
       @character_buffer[vmli] = video_matrix(vc)
       @color_buffer[vmli] = vic_bank.peek_color(vc)
