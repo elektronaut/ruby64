@@ -7,8 +7,10 @@ module Ruby64
     CLOCK_HZ = 985_248 # PAL only for now.
 
     def initialize(clock_hz: CLOCK_HZ)
-      @cycles_per_tenth = clock_hz / 10.0
-      @accumulator = 0.0
+      # The accumulator advances 10 per cycle, so a tenth of a second has
+      # passed when it reaches clock_hz. Integer math keeps it exact.
+      @cycles_per_tenth = clock_hz
+      @accumulator = 0
       @clock = { tenths: 0, seconds: 0, minutes: 0, hours: 12, pm: false }
       @alarm = { tenths: 0, seconds: 0, minutes: 0, hours: 0, pm: false }
       @latch = nil
@@ -18,7 +20,7 @@ module Ruby64
     def cycle!
       return if @stopped
 
-      @accumulator += 1
+      @accumulator += 10
       return if @accumulator < @cycles_per_tenth
 
       @accumulator -= @cycles_per_tenth
@@ -65,7 +67,7 @@ module Ruby64
 
     def resume
       @stopped = false
-      @accumulator = 0.0
+      @accumulator = 0
     end
 
     def advance

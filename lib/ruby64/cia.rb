@@ -38,7 +38,7 @@ module Ruby64
     end
 
     def interrupted?
-      interrupt_status.interrupt?
+      interrupt_status.value.anybits?(0x80)
     end
 
     def cycle!
@@ -49,6 +49,12 @@ module Ruby64
     def read_port_a
       pulldown = peripheral ? peripheral.read_a(@data_port_a, @data_port_b) : 0xff
       driven_lines(@data_port_a, @data_dir_a) & pulldown
+    end
+
+    # Port A as driven by the data/direction registers alone, without
+    # peripheral pulldown. Cheap path for the VIC bank lookup.
+    def port_a_lines
+      driven_lines(@data_port_a, @data_dir_a)
     end
 
     def read_port_b
@@ -137,13 +143,11 @@ module Ruby64
     def update_timers
       @timer_a_reached_zero = false
       @timer_b_reached_zero = false
-      update_timer_a
-      update_timer_b
+      update_timer_a if @control_a.value.anybits?(0x01)
+      update_timer_b if @control_b.value.anybits?(0x01)
     end
 
     def update_timer_a
-      return unless control_a.start?
-
       @timer_a -= 1
       return if timer_a.positive?
 
@@ -159,8 +163,6 @@ module Ruby64
     end
 
     def update_timer_b
-      return unless control_b.start?
-
       if control_b.count_a?
         @timer_b -= 1 if @timer_a_reached_zero
       else
