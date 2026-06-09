@@ -12,7 +12,7 @@ module Ruby64
     include IntegerHelper
 
     attr_reader :address_bus, :display, :width, :height, :vic_bank, :column,
-                :rasterline
+                :rasterline, :dirty_lines
 
     SPRITE_BA_RANGES = [
       55..59, 57..61, 59..62,
@@ -33,6 +33,7 @@ module Ruby64
       @sequencer = VIC::Sequencer.new(@width, @registers, @vic_bank)
       @sprites = VIC::Sprites.new(@registers, @vic_bank, @width)
       @display = Array.new(@width * @height, 0)
+      @dirty_lines = Array.new(@height, true)
 
       @column = 0
       @rasterline = 0
@@ -117,6 +118,11 @@ module Ruby64
       @rasterline < 16 || @rasterline > 299 || @column < 10 || @column > 60
     end
 
+    # Reset the dirty flags once the frontend has consumed them.
+    def clear_dirty_lines!
+      @dirty_lines.fill(false)
+    end
+
     private
 
     def rebuild_sprite_ba
@@ -152,7 +158,12 @@ module Ruby64
         @sprites.composite(@sequencer.colors, @sequencer.fg)
         @sequencer.apply_border
       end
-      @display[@rasterline * @width, @width] = @sequencer.colors
+      base = @rasterline * @width
+      colors = @sequencer.colors
+      return if @display[base, @width] == colors
+
+      @display[base, @width] = colors
+      @dirty_lines[@rasterline] = true
     end
 
     def video_matrix(index)

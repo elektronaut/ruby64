@@ -8,10 +8,13 @@ module Ruby64
       COL_OFFSET = 96
       ROW_OFFSET = 20
 
+      ROW_BYTES = WIDTH * 4
+
       def initialize(computer, left: 0, top: 0, palette: Palette.new)
         super(width: WIDTH, height: HEIGHT, left:, top:)
         @computer = computer
-        @palette = palette
+        @palette = palette.dwords
+        @buffer = ("\x00" * (HEIGHT * ROW_BYTES)).b
       end
 
       def render(renderer)
@@ -20,17 +23,27 @@ module Ruby64
 
       private
 
+      # Repack only the scanlines the VIC has touched since the last frame.
       def framebuffer
-        display = @computer.vic.display
-        vic_width = @computer.vic.width
+        vic = @computer.vic
+        display = vic.display
+        vic_width = vic.width
+        dirty = vic.dirty_lines
 
-        pixels = []
         HEIGHT.times do |row|
-          base = ((row + ROW_OFFSET) * vic_width) + COL_OFFSET
-          pixels.concat(display[base, WIDTH])
+          next unless dirty[row + ROW_OFFSET]
+
+          @buffer[row * ROW_BYTES, ROW_BYTES] =
+            pack_row(display, vic_width, row)
         end
-        pixels.map! { |c| @palette[c] }
-        pixels.join
+        vic.clear_dirty_lines!
+        @buffer
+      end
+
+      def pack_row(display, vic_width, row)
+        line = display[((row + ROW_OFFSET) * vic_width) + COL_OFFSET, WIDTH]
+        line.map! { |c| @palette[c] }
+        line.pack("V*")
       end
     end
   end

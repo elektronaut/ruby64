@@ -10,8 +10,11 @@ module Ruby64
         "#8A8A8A", "#B3EC91", "#867ADE", "#B3B3B3"
       ].freeze
 
+      attr_reader :dwords
+
       def initialize
-        @entries = COLORS.map { |hex| pack(hex) }.freeze
+        @dwords = COLORS.map { |hex| dword(hex) }.freeze
+        @entries = @dwords.map { |rgba| [rgba].pack("V") }.freeze
       end
 
       def [](color)
@@ -20,12 +23,12 @@ module Ruby64
 
       private
 
-      # Pack color as 4-byte little-endian RGBA string.
-      def pack(hex)
+      # Color as a little-endian RGBA dword.
+      def dword(hex)
         r = hex[1, 2].to_i(16)
         g = hex[3, 2].to_i(16)
         b = hex[5, 2].to_i(16)
-        [(255 << 24) | (b << 16) | (g << 8) | r].pack("V")
+        (255 << 24) | (b << 16) | (g << 8) | r
       end
     end
   end

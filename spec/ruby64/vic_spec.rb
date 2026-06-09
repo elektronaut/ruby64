@@ -539,4 +539,48 @@ RSpec.describe Ruby64::VIC do
       end
     end
   end
+
+  describe "dirty line tracking" do
+    def run_frames(count)
+      (count * 312 * 63).times { vic.cycle! }
+    end
+
+    it "starts with all lines dirty" do
+      expect(vic.dirty_lines).to all(be(true))
+    end
+
+    it "clears all flags with clear_dirty_lines!" do
+      vic.clear_dirty_lines!
+      expect(vic.dirty_lines).to all(be(false))
+    end
+
+    context "when nothing changes between frames" do
+      before do
+        run_frames(2)
+        vic.clear_dirty_lines!
+        run_frames(1)
+      end
+
+      it "keeps all lines clean" do
+        expect(vic.dirty_lines).to all(be(false))
+      end
+    end
+
+    context "when the border color changes" do
+      before do
+        run_frames(2)
+        vic.clear_dirty_lines!
+        vic.poke(0xd020, 0)
+        run_frames(1)
+      end
+
+      it "marks the visible lines dirty" do
+        expect(vic.dirty_lines[16..299]).to all(be(true))
+      end
+
+      it "keeps the vblank lines clean" do
+        expect(vic.dirty_lines[0...16]).to all(be(false))
+      end
+    end
+  end
 end
