@@ -48,6 +48,11 @@ module Ruby64
       end
     end
 
+    def mount(storage)
+      load_trap = KernalLoadTrap.new(cpu:, bus: address_bus, storage:)
+      cpu.install_trap(KernalLoadTrap::ADDRESS) { load_trap.call }
+    end
+
     def on_init(&block)
       if booting?
         @init_handlers << block

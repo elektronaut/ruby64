@@ -8,6 +8,7 @@ module Ruby64
     class InvalidOpcodeError < StandardError; end
     include IntegerHelper
     include InstructionSet
+    include Traps
 
     attr_reader :memory, :instructions, :boundary_crossed
     attr_accessor :program_counter, :stack_pointer, :status, :a, :x, :y,
@@ -22,6 +23,7 @@ module Ruby64
       @nmi = @irq = false
 
       @instructions = 0
+      @traps = nil
       super()
     end
 
@@ -202,6 +204,7 @@ module Ruby64
       if nmi || (irq && !status.interrupt?)
         handle_interrupts
       else
+        run_traps
         @boundary_crossed = false
         @instruction = read_instruction
         raise InvalidOpcodeError unless @instruction

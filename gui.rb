@@ -14,6 +14,6 @@ require_relative "gui/screen_pane"
 require_relative "gui/window"
 require_relative "gui/application"
 
-prg_path = ARGV[0] if ARGV[0] && File.exist?(ARGV[0])
+media_path = ARGV[0] if ARGV[0] && File.exist?(ARGV[0])
 
-Ruby64::GUI::Application.new(prg_path:).run
+Ruby64::GUI::Application.new(media_path:).run

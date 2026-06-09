@@ -1379,4 +1379,19 @@ describe Ruby64::CPU do
       expect(cpu.a).to eq(0x40)
     end
   end
+
+  describe "#install_trap" do
+    it "invokes the handler when execution reaches the address" do
+      cpu.install_trap(start_addr) { cpu.a = 0x42 }
+      execute([0xea])
+      expect(cpu.a).to eq(0x42)
+    end
+
+    it "fetches the next instruction from the handler's program counter" do
+      memory.write(0x2000, [0xa9, 0x07]) # LDA #$07
+      cpu.install_trap(start_addr) { cpu.program_counter = 0x2000 }
+      execute([0xea])
+      expect(cpu.a).to eq(0x07)
+    end
+  end
 end

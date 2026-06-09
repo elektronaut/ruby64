@@ -9,9 +9,9 @@ module Ruby64
 
       SHARED_KEYS = %i[up left cursor_h cursor_v space].freeze
 
-      def initialize(prg_path: nil, debug: false)
+      def initialize(media_path: nil, debug: false)
         @computer = Computer.new(debug:)
-        load_prg(prg_path) if prg_path
+        puts Media.attach(@computer, media_path) if media_path
 
         @joystick_mode = false
         @panes = [ScreenPane.new(@computer)]
@@ -80,14 +80,6 @@ module Ruby64
           Joystick::DIRECTIONS.each_key { |dir| @computer.joystick2.release(dir) }
         end
         @window.title = @joystick_mode ? "#{TITLE} [JOY]" : TITLE
-      end
-
-      def load_prg(path)
-        data = File.read(path, mode: "rb").bytes
-        @computer.on_init do
-          load_addr = @computer.load_prg(data)
-          puts "Loaded at $#{load_addr.to_s(16).upcase}"
-        end
       end
 
       def canvas_width
