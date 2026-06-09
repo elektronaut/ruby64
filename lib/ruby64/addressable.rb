@@ -53,9 +53,7 @@ module Ruby64
 
     def index(addr)
       i = addr - @start
-      unless i >= 0 && i < @length
-        raise OutOfBoundsError, "#{addr.inspect} (#{range})"
-      end
+      raise OutOfBoundsError, "#{addr.inspect} (#{range})" unless i >= 0 && i < @length
 
       i
     end
