@@ -5,6 +5,7 @@ require "forwardable"
 module Ruby64
   class Computer
     include IntegerHelper
+    include KeyboardBuffer
     extend Forwardable
 
     attr_reader :address_bus, :cpu, :cycles
@@ -20,12 +21,14 @@ module Ruby64
       @cycles = 0
       @nmi_asserted = false
       @init_handlers = []
+      @pending_keys = nil
     end
 
     INIT_THRESHOLD = 2_500_000
 
     def cycle!
       handle_init if @cycles == INIT_THRESHOLD
+      feed_keyboard if @pending_keys
 
       @vic.cycle!
       @cia1.cycle!

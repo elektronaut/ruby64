@@ -43,13 +43,10 @@ module Ruby64
     # Filename pointer at $BB/$BC, length at $B7
     def filename
       pointer = uint16(@bus.peek(0xbb), @bus.peek(0xbc))
-      Array.new(@bus.peek(0xb7)) do |i|
-        from_petscii(@bus.peek((pointer + i) & 0xffff))
-      end.pack("C*")
-    end
-
-    def from_petscii(byte)
-      byte.between?(0xc1, 0xda) ? byte - 0x80 : byte
+      bytes = Array.new(@bus.peek(0xb7)) do |i|
+        @bus.peek((pointer + i) & 0xffff)
+      end
+      Storage.ascii(bytes)
     end
 
     # A=0 is LOAD, A=1 is VERIFY

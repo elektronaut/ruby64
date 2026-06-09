@@ -25,6 +25,40 @@ describe Ruby64::Media do
       end
     end
 
+    context "with a D64 image" do
+      let(:d64_path) do
+        File.join(dir, "disk.d64").tap do |path|
+          File.binwrite(path, "\x00" * 174_848)
+        end
+      end
+
+      it "mounts it as device 8" do
+        allow(computer).to receive(:mount)
+        described_class.attach(computer, d64_path)
+        expect(computer)
+          .to have_received(:mount)
+          .with(instance_of(Ruby64::Storage::D64Image))
+      end
+
+      it "types the autostart command" do
+        allow(computer).to receive(:type_text)
+        described_class.attach(computer, d64_path)
+        expect(computer)
+          .to have_received(:type_text).with(%(lO"*",8,1\rrun\r))
+      end
+
+      it "skips autostart when disabled" do
+        allow(computer).to receive(:type_text)
+        described_class.attach(computer, d64_path, autostart: false)
+        expect(computer).not_to have_received(:type_text)
+      end
+
+      it "returns a mount message" do
+        expect(described_class.attach(computer, d64_path))
+          .to include("device 8")
+      end
+    end
+
     context "with a PRG file" do
       let(:prg_path) do
         File.join(dir, "test.prg").tap do |path|

@@ -9,9 +9,9 @@ module Ruby64
 
       SHARED_KEYS = %i[up left cursor_h cursor_v space].freeze
 
-      def initialize(media_path: nil, debug: false)
+      def initialize(media_path: nil, autostart: true, debug: false)
         @computer = Computer.new(debug:)
-        puts Media.attach(@computer, media_path) if media_path
+        puts Media.attach(@computer, media_path, autostart:) if media_path
 
         @joystick_mode = false
         @panes = [ScreenPane.new(@computer)]
