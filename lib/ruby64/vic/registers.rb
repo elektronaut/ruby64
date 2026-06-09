@@ -76,8 +76,13 @@ module Ruby64
 
       def initialize
         @bytes = Array.new(2**6, 0)
+        @irq_line = false
         write_defaults
       end
+
+      # True while any enabled latch bit is set in $D019/$D01A. Cached and
+      # re-evaluated on writes, since it's checked every cycle.
+      def irq_line? = @irq_line
 
       def [](reg) = @bytes[reg]
 
@@ -92,8 +97,12 @@ module Ruby64
 
       def write(reg, value)
         case reg
-        when 0x19 then @bytes[reg] &= ~value      # write 1 to clear
-        when 0x1a then @bytes[reg] = value & 0x0f # only the four latch bits
+        when 0x19 # write 1 to clear
+          @bytes[reg] &= ~value
+          update_irq_line
+        when 0x1a # only the four latch bits
+          @bytes[reg] = value & 0x0f
+          update_irq_line
         else @bytes[reg] = value
         end
       end
@@ -102,7 +111,8 @@ module Ruby64
       def ecm = @bytes[0x11][6]
       def bmm = @bytes[0x11][5]
       def mcm = @bytes[0x16][4]
-      def mode = (ecm << 2) | (bmm << 1) | mcm
+      # ECM/BMM from $D011 bits 6-5, MCM from $D016 bit 4.
+      def mode = ((@bytes[0x11] >> 4) & 0b110) | ((@bytes[0x16] >> 4) & 0b001)
 
       def xscroll = @bytes[0x16] & 0b0111
       def yscroll = @bytes[0x11] & 0b0111
@@ -120,7 +130,11 @@ module Ruby64
 
       def raster_target = uint16(@bytes[0x12], (@bytes[0x11] & 0x80) >> 7)
 
-      def latch_irq!(bit) = @bytes[0x19] |= bit
+      def latch_irq!(bit)
+        @bytes[0x19] |= bit
+        update_irq_line
+      end
+
       def latch_raster_irq! = latch_irq!(0x01)
 
       def collide!(reg, bits)
@@ -132,6 +146,10 @@ module Ruby64
       end
 
       private
+
+      def update_irq_line
+        @irq_line = (@bytes[0x19] & @bytes[0x1a]).anybits?(0x0f)
+      end
 
       def read_clear(reg)
         @bytes[reg].tap { @bytes[reg] = 0 }

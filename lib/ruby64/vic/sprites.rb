@@ -14,6 +14,9 @@ module Ruby64
         @bank = bank
         @width = width
         @sprites = Array.new(8) { |i| Sprite.new(i, registers, bank, width) }
+        @hits = Array.new(width, 0)
+        @win_color = Array.new(width, 0)
+        @win_priority = Array.new(width, false)
       end
 
       def [](index) = @sprites[index]
@@ -24,60 +27,83 @@ module Ruby64
 
       def active? = @sprites.any?(&:displaying?)
 
+      # Merge each displaying sprite's line into the scratch buffers, then
+      # apply the winners over the background in a single pass over the
+      # touched span.
       def composite(colors, mask)
-        active = @sprites.select(&:displaying?)
-        return if active.empty?
+        @sprite_clash = 0
+        @data_clash = 0
+        lo = @width
+        hi = 0
 
-        lo, hi = span(active)
-        raster_x = lo
-        while raster_x < hi
-          composite_pixel(active, colors, mask, raster_x)
-          raster_x += 1
+        @sprites.each do |sprite|
+          next unless sprite.displaying?
+
+          seg_lo, seg_hi = merge(sprite, mask)
+          lo = seg_lo if seg_lo < lo
+          hi = seg_hi if seg_hi > hi
         end
+
+        apply(colors, mask, lo, hi)
+        register_collisions
       end
 
       private
 
-      def span(active)
-        lo = @width
-        hi = 0
-        active.each do |sprite|
-          left = sprite.leftmost
-          right = left + sprite.pixel_width
-          return [0, @width] if right > @width
+      # Write one sprite's pixels into the scratch line. The first sprite to
+      # claim a pixel wins (lowest index has priority); later hits only
+      # accumulate collision bits.
+      def merge(sprite, mask)
+        left = sprite.leftmost
+        pixels = sprite.line_pixels
+        last = sprite.pixel_width
+        bit = 1 << sprite.index
+        priority = sprite.priority?
 
-          lo = left if left < lo
-          hi = right if right > hi
-        end
-        [lo, hi]
-      end
-
-      def composite_pixel(active, colors, mask, raster_x)
-        winner = nil
-        winner_color = nil
-        hits = 0
-        foreground = mask[raster_x]
-
-        active.each do |sprite|
-          color = sprite.pixel(raster_x)
-          next if color.nil?
-
-          hits |= (1 << sprite.index)
-          if winner.nil?
-            winner = sprite
-            winner_color = color
+        i = 0
+        while i < last
+          color = pixels[i]
+          if color
+            x = left + i
+            x -= @width if x >= @width
+            merge_pixel(x, color, bit, priority, mask)
           end
+          i += 1
         end
-        return if hits.zero?
 
-        register_collisions(hits, foreground)
-        colors[raster_x] = winner_color unless winner.priority? && foreground
+        right = left + last
+        right > @width ? [0, @width] : [left, right]
       end
 
-      def register_collisions(hits, foreground)
-        multiple = (hits & (hits - 1)).nonzero?
-        @registers.latch_irq!(SPRITE_COLLISION_IRQ) if multiple && @registers.collide!(0x1e, hits)
-        return unless foreground && @registers.collide!(0x1f, hits)
+      def merge_pixel(pos, color, bit, priority, mask)
+        bits = @hits[pos]
+        if bits.zero?
+          @win_color[pos] = color
+          @win_priority[pos] = priority
+        else
+          @sprite_clash |= bits | bit
+        end
+        @hits[pos] = bits | bit
+        @data_clash |= bit if mask[pos]
+      end
+
+      def apply(colors, mask, from, upto)
+        pos = from
+        while pos < upto
+          if @hits[pos].nonzero?
+            colors[pos] = @win_color[pos] unless @win_priority[pos] && mask[pos]
+            @hits[pos] = 0
+          end
+          pos += 1
+        end
+      end
+
+      def register_collisions
+        if @sprite_clash.nonzero? && @registers.collide!(0x1e, @sprite_clash)
+          @registers.latch_irq!(SPRITE_COLLISION_IRQ)
+        end
+        return if @data_clash.zero?
+        return unless @registers.collide!(0x1f, @data_clash)
 
         @registers.latch_irq!(DATA_COLLISION_IRQ)
       end

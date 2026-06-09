@@ -3,28 +3,43 @@
 module Ruby64
   class VIC < Cycleable
     module GraphicsMode
+      # Foreground masks depend only on the data byte, so each byte maps to a
+      # precomputed frozen pattern shared by reference instead of being
+      # written out pixel by pixel.
+      HIRES_FG = Array.new(256) do |data|
+        Array.new(8) { |i| data.anybits?(1 << (7 - i)) }.freeze
+      end.freeze
+
+      # The high bit of each 2-bit pair (10/11) is foreground.
+      PAIR_FG = Array.new(256) do |data|
+        Array.new(8) { |i| (data >> (6 - (i & ~1))).allbits?(0b10) }.freeze
+      end.freeze
+
+      NO_FG = HIRES_FG[0]
+
       module Hires
-        def paint_hires(data, color, background, colors, mask)
+        def paint_hires(data, color, background, seq)
+          seq.cur_fg = HIRES_FG[data]
+          colors = seq.cur_colors
+          return colors.fill(background) if data.zero?
+
           i = 0
           while i < 8
-            set = data.anybits?(1 << (7 - i))
-            colors[i] = set ? color : background
-            mask[i] = set
+            colors[i] = data.anybits?(1 << (7 - i)) ? color : background
             i += 1
           end
         end
       end
 
       # Decodes 2-bit pixel pairs into double-wide pixels. The colour for each
-      # pair is supplied by the block. The high bit of the pair (10/11) is
-      # foreground.
+      # pair is supplied by the block.
       module Multicolor
-        def paint_pairs(data, colors, mask)
+        def paint_pairs(data, seq)
+          seq.cur_fg = PAIR_FG[data]
+          colors = seq.cur_colors
           i = 0
           while i < 8
-            pair = (data >> (6 - (i & ~1))) & 0b11
-            colors[i] = yield(pair)
-            mask[i] = pair.anybits?(0b10)
+            colors[i] = yield((data >> (6 - (i & ~1))) & 0b11)
             i += 1
           end
         end
@@ -36,7 +51,7 @@ module Ruby64
         def decode(screencode, color, _cell, row, seq)
           registers = seq.registers
           data = seq.bank.peek(registers.char_base + (screencode * 8) + row)
-          paint_hires(data, color, registers.background, seq.cur_colors, seq.cur_fg)
+          paint_hires(data, color, registers.background, seq)
         end
       end
 
@@ -48,11 +63,11 @@ module Ruby64
           registers = seq.registers
           data = seq.bank.peek(registers.char_base + (screencode * 8) + row)
           if color.anybits?(0x08)
-            paint_pairs(data, seq.cur_colors, seq.cur_fg) do |pair|
+            paint_pairs(data, seq) do |pair|
               multicolor_pixel(pair, color, registers)
             end
           else
-            paint_hires(data, color & 0x07, registers.background, seq.cur_colors, seq.cur_fg)
+            paint_hires(data, color & 0x07, registers.background, seq)
           end
         end
 
@@ -75,7 +90,7 @@ module Ruby64
           registers = seq.registers
           background = registers.background((screencode >> 6) & 0b11)
           data = seq.bank.peek(registers.char_base + ((screencode & 0x3f) * 8) + row)
-          paint_hires(data, color, background, seq.cur_colors, seq.cur_fg)
+          paint_hires(data, color, background, seq)
         end
       end
 
@@ -86,7 +101,7 @@ module Ruby64
           data = seq.bank.peek(seq.registers.bitmap_base + (cell * 8) + row)
           foreground = (screencode >> 4) & 0x0f
           background = screencode & 0x0f
-          paint_hires(data, foreground, background, seq.cur_colors, seq.cur_fg)
+          paint_hires(data, foreground, background, seq)
         end
       end
 
@@ -96,7 +111,7 @@ module Ruby64
         def decode(screencode, color, cell, row, seq)
           registers = seq.registers
           data = seq.bank.peek(registers.bitmap_base + (cell * 8) + row)
-          paint_pairs(data, seq.cur_colors, seq.cur_fg) do |pair|
+          paint_pairs(data, seq) do |pair|
             multicolor_pixel(pair, screencode, color, registers)
           end
         end
@@ -115,14 +130,8 @@ module Ruby64
 
       class Null
         def decode(_screencode, _color, _cell, _row, seq)
-          colors = seq.cur_colors
-          mask = seq.cur_fg
-          i = 0
-          while i < 8
-            colors[i] = 0
-            mask[i] = false
-            i += 1
-          end
+          seq.cur_fg = NO_FG
+          seq.cur_colors.fill(0)
         end
       end
     end

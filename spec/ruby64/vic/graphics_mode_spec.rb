@@ -179,7 +179,7 @@ RSpec.describe Ruby64::VIC::GraphicsMode do
     end
 
     it "marks nothing as foreground" do
-      sequencer.cur_fg.fill(true)
+      sequencer.cur_fg = Array.new(8, true)
       mode.decode(1, 1, 0, 0, sequencer)
       expect(sequencer.cur_fg).to all(be(false))
     end

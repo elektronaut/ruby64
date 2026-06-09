@@ -6,7 +6,7 @@ module Ruby64
       X_OFFSET = 104
       ROWS = 21
 
-      attr_reader :index
+      attr_reader :index, :line_pixels
 
       def initialize(index, registers, bank, width)
         @index = index
@@ -17,6 +17,8 @@ module Ruby64
         @displaying = false
         @counter = 0
         @bits = nil
+        @line_pixels = nil
+        @pixel_buffer = Array.new(48)
       end
 
       def displaying? = @displaying
@@ -44,41 +46,65 @@ module Ruby64
           @counter = 0
         end
 
-        return @bits = nil unless @displaying
+        return @line_pixels = nil unless @displaying
 
         row = y_expanded? ? @counter / 2 : @counter
         if row >= ROWS
           @displaying = false
-          return @bits = nil
+          return @line_pixels = nil
         end
 
         @counter += 1
         fetch(row)
+        decode_line
       end
 
       def pixel(raster_x)
-        return nil unless @bits
+        return nil unless @line_pixels
 
-        dist = raster_x - ((x + X_OFFSET) % @width)
+        dist = raster_x - leftmost
         dist += @width if dist.negative?
-        offset = x_expanded? ? dist / 2 : dist
-        return nil if offset >= 24
-
-        multicolor? ? multicolor_pixel(offset) : hires_pixel(offset)
+        dist < pixel_width ? @line_pixels[dist] : nil
       end
 
       private
 
-      def hires_pixel(offset)
-        (@bits >> (23 - offset)).nobits?(1) ? nil : color
+      # Decode the fetched 24 data bits into a buffer of pixel colors (nil is
+      # transparent), so compositing can read pixels without re-deriving them.
+      def decode_line(pixels = @pixel_buffer)
+        @line_pixels = pixels
+        if multicolor?
+          decode_multicolor(pixels, x_expanded?)
+        else
+          decode_hires(pixels, x_expanded?)
+        end
       end
 
-      def multicolor_pixel(offset)
-        case (@bits >> (22 - (offset & ~1))) & 0b11
-        when 0b00 then nil
-        when 0b01 then @registers[0x25] & 0x0f
-        when 0b10 then color
-        else @registers[0x26] & 0x0f
+      def decode_hires(pixels, expanded)
+        own = color
+        last = expanded ? 48 : 24
+        i = 0
+        while i < last
+          offset = expanded ? i >> 1 : i
+          pixels[i] = (@bits >> (23 - offset)).anybits?(1) ? own : nil
+          i += 1
+        end
+      end
+
+      def decode_multicolor(pixels, expanded)
+        shared1 = @registers[0x25] & 0x0f
+        shared2 = @registers[0x26] & 0x0f
+        own = color
+        last = expanded ? 48 : 24
+        i = 0
+        while i < last
+          offset = expanded ? i >> 1 : i
+          pixels[i] = case (@bits >> (22 - (offset & ~1))) & 0b11
+                      when 0b01 then shared1
+                      when 0b10 then own
+                      when 0b11 then shared2
+                      end
+          i += 1
         end
       end
 

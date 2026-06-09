@@ -7,6 +7,9 @@ module Ruby64
     class Bank
       include Addressable
 
+      # The CIA2 port A bank bits are inverted: %11 selects bank 0.
+      BANK_STARTS = [0xc000, 0x8000, 0x4000, 0x0000].freeze
+
       attr_reader :address_bus
 
       def initialize(address_bus = nil)
@@ -15,15 +18,11 @@ module Ruby64
       end
 
       def peek(offset)
-        case offset
-        when 0x1000..0x1fff
-          if character_rom?
-            address_bus.character_rom.peek(0xc000 + offset)
-          else
-            address_bus.ram.peek(start + offset)
-          end
+        bits = bank_switch_register
+        if bits.allbits?(0b01) && (offset & 0xf000) == 0x1000
+          @address_bus.character_rom.peek(0xc000 + offset)
         else
-          address_bus.ram.peek(start + offset)
+          @address_bus.ram.peek(BANK_STARTS[bits] + offset)
         end
       end
 
@@ -36,18 +35,13 @@ module Ruby64
       end
 
       def start
-        case bank_switch_register
-        when 0b00 then 0xc000
-        when 0b01 then 0x8000
-        when 0b10 then 0x4000
-        when 0b11 then 0x0000
-        end
+        BANK_STARTS[bank_switch_register]
       end
 
       private
 
       def bank_switch_register
-        address_bus.cia2.peek(0xdd00) & 0b11
+        @address_bus.cia2.port_a_lines & 0b11
       end
 
       def character_rom?
