@@ -53,6 +53,10 @@ module Ruby64
 
       @io_port = Status.new(%i[basic kernal io tape_out tape_switch tape_motor],
                             value: 0b00110111)
+
+      @read_pages = Array.new(256)
+      @write_pages = Array.new(256)
+      update_overlays!
     end
 
     def disable_overlays!
@@ -60,49 +64,46 @@ module Ruby64
     end
 
     def peek(addr)
-      case addr
-      when 0x01 then @io_port.value
-      else read_source(addr).peek(addr)
-      end
+      return @io_port.value if addr == 0x01
+
+      @read_pages[addr >> 8].peek(addr)
     end
 
     def poke(addr, value)
-      case addr
-      when 0x01 then @io_port.value = value
-      else write_target(addr).poke(addr, value)
+      if addr == 0x01
+        @io_port.value = value
+        update_overlays!
+      else
+        @write_pages[addr >> 8].poke(addr, value)
       end
     end
 
     private
 
-    def io_source(addr)
-      case addr
-      when 0xd000..0xd3ff then vic
-      when 0xd400..0xd7ff then sid
-      when 0xd800..0xdbff then color_ram
-      when 0xdc00..0xdcff then cia1
-      when 0xdd00..0xddff then cia2
+    # Banking changes only on $01 writes, so reads and writes dispatch
+    # through per-page handler tables instead of range checks.
+    def update_overlays!
+      @read_pages.fill(@ram)
+      @write_pages.fill(@ram)
+
+      @read_pages.fill(basic_rom, 0xa0, 0x20) if basic?
+      @read_pages.fill(kernal_rom, 0xe0, 0x20) if kernal?
+
+      if io?
+        map_io_pages
+      elsif character?
+        @read_pages.fill(character_rom, 0xd0, 0x10)
       end
     end
 
-    def read_source(addr)
-      source = case addr
-               when 0xa000..0xbfff then basic? && basic_rom
-               when 0xd000..0xdfff
-                 if io?
-                   io_source(addr)
-                 elsif character?
-                   character_rom
-                 end
-               when 0xe000..0xffff then kernal? && kernal_rom
-               end
-      source || ram
-    end
-
-    def write_target(addr)
-      return ram unless io?
-
-      io_source(addr) || ram
+    def map_io_pages
+      {
+        vic => 0xd0..0xd3, sid => 0xd4..0xd7, color_ram => 0xd8..0xdb,
+        cia1 => 0xdc..0xdc, cia2 => 0xdd..0xdd
+        # 0xde/0xdf are open I/O and fall through to RAM
+      }.each do |chip, pages|
+        pages.each { |p| @read_pages[p] = @write_pages[p] = chip }
+      end
     end
 
     def basic?

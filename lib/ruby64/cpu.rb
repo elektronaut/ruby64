@@ -87,7 +87,7 @@ module Ruby64
     end
 
     def read_byte(addr)
-      cycle { memory[addr] }
+      cycle { @memory.peek(addr) }
     end
 
     def read_word(addr)
@@ -101,11 +101,11 @@ module Ruby64
     end
 
     def read_instruction
-      Instruction.find(memory[program_counter])
+      Instruction.find(@memory.peek(@program_counter))
     end
 
     def read_operand(instruction)
-      return [] unless instruction.operand?
+      return nil unless instruction.operand?
 
       if instruction.operand_length == 2
         read_word(program_counter)
@@ -209,20 +209,16 @@ module Ruby64
         @program_counter = (@program_counter + 1) & 0xffff
         @cycles += 1
 
-        operand = read_operand(@instruction)
-        address = read_address(@instruction, operand)
+        @operand = operand = read_operand(@instruction)
+        @address = address = read_address(@instruction, operand)
 
         @program_counter = (@program_counter + @instruction.operand_length) &
                            0xffff
 
         log(@instruction, operand, address)
 
-        # Run instruction and update processor status
-        send(
-          @instruction.name,
-          address,
-          -> { realize_value(@instruction, operand, address) }
-        )
+        # Run the instruction; :lazy realizes the value through #resolve
+        send(@instruction.name, address, :lazy)
 
         @instructions += 1
         @instruction = nil
@@ -234,7 +230,7 @@ module Ruby64
       if addr == :accumulator
         @a = value
       else
-        cycle(write: true) { memory[addr] = value }
+        cycle(write: true) { @memory.poke(addr, value) }
       end
     end
   end

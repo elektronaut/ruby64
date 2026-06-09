@@ -22,8 +22,10 @@ module Ruby64
       @init_handlers = []
     end
 
+    INIT_THRESHOLD = 2_500_000
+
     def cycle!
-      handle_init
+      handle_init if @cycles == INIT_THRESHOLD
 
       @vic.cycle!
       @cia1.cycle!
@@ -31,8 +33,9 @@ module Ruby64
 
       @cpu.irq = @cia1.interrupted? || @vic.interrupted?
 
-      @cpu.nmi = true if @cia2.interrupted? && !@nmi_asserted
-      @nmi_asserted = @cia2.interrupted?
+      nmi = @cia2.interrupted?
+      @cpu.nmi = true if nmi && !@nmi_asserted
+      @nmi_asserted = nmi
 
       @cpu.cycle! if @cpu.pending_write? || !@vic.ba_low?
 
@@ -60,13 +63,11 @@ module Ruby64
     end
 
     def handle_init
-      return unless cycles == init_threshold
-
       @init_handlers.each(&:call)
     end
 
     def init_threshold
-      2_500_000
+      INIT_THRESHOLD
     end
   end
 end

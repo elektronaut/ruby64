@@ -2,7 +2,7 @@
 
 module Ruby64
   class Instruction
-    attr_reader :name, :addressing_mode
+    attr_reader :name, :addressing_mode, :operand_length
 
     def initialize(name, addressing_mode,
                    illegal: false, boundary_cycle: false)
@@ -10,6 +10,7 @@ module Ruby64
       @addressing_mode = addressing_mode
       @boundary_cycle = boundary_cycle
       @illegal = illegal
+      @operand_length = compute_operand_length
     end
 
     class << self
@@ -290,7 +291,13 @@ module Ruby64
       end
 
       def find(opcode)
-        map[opcode.to_i]
+        table[opcode.to_i]
+      end
+
+      private
+
+      def table
+        @table ||= Array.new(256) { |opcode| map[opcode] }
       end
     end
 
@@ -310,7 +317,9 @@ module Ruby64
       operand_length.positive?
     end
 
-    def operand_length
+    private
+
+    def compute_operand_length
       case addressing_mode
       when :implied, :accumulator
         0

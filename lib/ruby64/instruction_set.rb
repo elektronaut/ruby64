@@ -49,7 +49,13 @@ module Ruby64
     private
 
     def resolve(value)
-      value.is_a?(Proc) ? value.call : value
+      if value == :lazy
+        realize_value(@instruction, @operand, @address)
+      elsif value.is_a?(Proc)
+        value.call
+      else
+        value
+      end
     end
 
     def update_number_flags(value)
