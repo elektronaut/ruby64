@@ -13,6 +13,9 @@ describe Ruby64::Storage::HostDirectory do
     File.binwrite(File.join(dir, "HELLO.PRG"), [0x01, 0x08, 0x60].pack("C*"))
     File.binwrite(File.join(dir, "intro.prg"), [0x00, 0xc0, 0xaa].pack("C*"))
     File.binwrite(File.join(dir, "notes.txt"), "not a program")
+    File.binwrite(File.join(dir, "zz-game.p00"),
+                  "C64File\x00LONG NAME#{"\x00" * 9}".b + [0x00, 0x20, 0x77].pack("C*"))
+    File.binwrite(File.join(dir, "zz-fake.p00"), "not a container")
   end
 
   after { FileUtils.remove_entry(dir) }
@@ -44,6 +47,14 @@ describe Ruby64::Storage::HostDirectory do
 
     it "ignores files without a .prg extension" do
       expect(storage.read_file("NOTES")).to be_nil
+    end
+
+    it "serves a .p00 by its embedded name, header stripped" do
+      expect(storage.read_file("long name")).to eq([0x00, 0x20, 0x77])
+    end
+
+    it "ignores .p00 files without the magic" do
+      expect(storage.read_file("zz-fake")).to be_nil
     end
   end
 end
