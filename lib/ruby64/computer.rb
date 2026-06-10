@@ -61,6 +61,12 @@ module Ruby64
       cpu.install_trap(KernalLoadTrap::ADDRESS) { load_trap.call }
     end
 
+    def capture_output
+      @capture_output ||= ChroutTrap.new(cpu:, bus: address_bus).tap do |trap|
+        cpu.install_trap(ChroutTrap::ADDRESS) { trap.call }
+      end
+    end
+
     def on_init(&block)
       if booting?
         @init_handlers << block
