@@ -31,7 +31,7 @@ module Ruby64
         v = resolve(value)
         result = (v << 1) & 0xff
         status.carry = v[7]
-        cycle { write_byte(addr, result) }
+        write_modified(addr, v, result)
         update_number_flags(result)
       end
 
@@ -75,7 +75,7 @@ module Ruby64
         v = resolve(value)
         result = (v >> 1) & 0xff
         status.carry = v[0]
-        cycle { write_byte(addr, result) }
+        write_modified(addr, v, result)
         update_number_flags(result)
       end
 
@@ -107,7 +107,7 @@ module Ruby64
         v = resolve(value)
         result = ((v << 1) + status.carry) & 0xff
         status.carry = v[7]
-        cycle { write_byte(addr, result) }
+        write_modified(addr, v, result)
         update_number_flags(result)
       end
 
@@ -123,7 +123,7 @@ module Ruby64
         v = resolve(value)
         result = ((v >> 1) + (status.carry? ? 0x80 : 0)) & 0xff
         status.carry = v[0]
-        cycle { write_byte(addr, result) }
+        write_modified(addr, v, result)
         update_number_flags(result)
       end
     end

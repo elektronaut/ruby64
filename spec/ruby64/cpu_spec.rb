@@ -208,6 +208,148 @@ describe Ruby64::CPU do
     end
   end
 
+  describe "read-modify-write memory access" do
+    let(:writes) { [] }
+
+    def run_logged(bytes)
+      memory.write(start_addr, bytes)
+      log = writes
+      memory.define_singleton_method(:poke) do |addr, value|
+        log << [addr, value]
+        super(addr, value)
+      end
+      cpu.step!
+    end
+
+    context "with ASL absolute" do
+      before do
+        memory.poke(0x2000, 0b10000001)
+        run_logged([0x0e, 0x00, 0x20])
+      end
+
+      it "writes the original value back before the result" do
+        expect(writes).to eq([[0x2000, 0b10000001], [0x2000, 0b00000010]])
+      end
+
+      specify { expect(cpu.cycles).to eq(6) }
+    end
+
+    context "with LSR zeropage" do
+      before do
+        memory.poke(0x10, 0b00000011)
+        run_logged([0x46, 0x10])
+      end
+
+      it "writes the original value back before the result" do
+        expect(writes).to eq([[0x10, 0b00000011], [0x10, 0b00000001]])
+      end
+
+      specify { expect(cpu.cycles).to eq(5) }
+    end
+
+    context "with ROL absolute" do
+      before do
+        cpu.status.carry = 1
+        memory.poke(0x2000, 0x80)
+        run_logged([0x2e, 0x00, 0x20])
+      end
+
+      it "writes the original value back before the result" do
+        expect(writes).to eq([[0x2000, 0x80], [0x2000, 0x01]])
+      end
+    end
+
+    context "with ROR zeropage" do
+      before do
+        cpu.status.carry = 1
+        memory.poke(0x10, 0x01)
+        run_logged([0x66, 0x10])
+      end
+
+      it "writes the original value back before the result" do
+        expect(writes).to eq([[0x10, 0x01], [0x10, 0x80]])
+      end
+    end
+
+    context "with INC zeropage" do
+      before do
+        memory.poke(0x10, 0x41)
+        run_logged([0xe6, 0x10])
+      end
+
+      it "writes the original value back before the result" do
+        expect(writes).to eq([[0x10, 0x41], [0x10, 0x42]])
+      end
+
+      specify { expect(cpu.cycles).to eq(5) }
+    end
+
+    context "with DEC absolute_x" do
+      before do
+        cpu.x = 4
+        memory.poke(0x2004, 0x10)
+        run_logged([0xde, 0x00, 0x20])
+      end
+
+      it "writes the original value back before the result" do
+        expect(writes).to eq([[0x2004, 0x10], [0x2004, 0x0f]])
+      end
+
+      specify { expect(cpu.cycles).to eq(7) }
+    end
+
+    context "with an illegal read-modify-write opcode (DCP zeropage)" do
+      before do
+        memory.poke(0x10, 0x10)
+        run_logged([0xc7, 0x10])
+      end
+
+      it "writes the original value back before the result" do
+        expect(writes).to eq([[0x10, 0x10], [0x10, 0x0f]])
+      end
+
+      specify { expect(cpu.cycles).to eq(5) }
+    end
+
+    context "with accumulator addressing" do
+      before do
+        cpu.a = 0x01
+        run_logged([0x0a])
+      end
+
+      it "performs no memory writes" do
+        expect(writes).to be_empty
+      end
+
+      specify { expect(cpu.cycles).to eq(2) }
+    end
+  end
+
+  describe "acknowledging a VIC interrupt with ASL $D019" do
+    let(:memory) do
+      Ruby64::AddressBus.new.tap do |bus|
+        bus.poke(0x01, 0b00000101) # HIRAM low: vectors in RAM, I/O mapped
+        bus.poke16(0xfffc, start_addr)
+      end
+    end
+
+    before do
+      memory[0xd01a] = 0x01
+      memory[0xd012] = 0x01
+      130.times { memory.vic.cycle! } # Latch the raster IRQ at line 1
+      memory.ram.write(start_addr, [0x0e, 0x19, 0xd0])
+    end
+
+    it "starts with the interrupt asserted" do
+      expect(memory.vic.interrupted?).to be(true)
+    end
+
+    it "acknowledges the interrupt through the dummy write" do
+      cpu.step!
+      expect(memory.vic.interrupted?).to be(false)
+    end
+  end
+
   describe "BCC" do
     let(:carry) { false }
     let(:offset) { 0x20 }

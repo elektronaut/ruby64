@@ -11,9 +11,10 @@ module Ruby64
       #   $D6 - zeropage_x - 6 cycles
       #   $DE - absolute_x - 7 cycles
       def dec(addr, value)
-        v = cycle { resolve(value) - 1 } & 0xff
-        write_byte(addr, v)
-        update_number_flags(v)
+        v = resolve(value)
+        result = (v - 1) & 0xff
+        write_modified(addr, v, result)
+        update_number_flags(result)
       end
 
       # Decrements X register by one.
@@ -42,9 +43,10 @@ module Ruby64
       #   $F6 - zeropage_x - 6 cycles
       #   $FE - absolute_x - 7 cycles
       def inc(addr, value)
-        v = cycle { (resolve(value) + 1) & 0xff }
-        write_byte(addr, v)
-        update_number_flags(v)
+        v = resolve(value)
+        result = (v + 1) & 0xff
+        write_modified(addr, v, result)
+        update_number_flags(result)
       end
 
       # Increments X register by one.

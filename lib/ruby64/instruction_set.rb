@@ -63,5 +63,15 @@ module Ruby64
       status.negative = value.anybits?(0x80)
       value
     end
+
+    # Read-modify-write instructions put the unmodified value back on the bus before writing the result.
+    def write_modified(addr, original, result)
+      if addr == :accumulator
+        cycle { @a = result }
+      else
+        write_byte(addr, original)
+        write_byte(addr, result)
+      end
+    end
   end
 end
