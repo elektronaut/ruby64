@@ -29,11 +29,21 @@ module Ruby64
   class AddressBus
     include Addressable
 
+    # Unmapped address space for Ultimax cartridges.
+    module OpenSpace
+      module_function
+
+      def peek(_addr) = 0xff
+      def poke(_addr, _value); end
+    end
+
     attr_reader :io_port, :ram, :basic_rom, :character_rom, :kernal_rom,
-                :vic, :sid, :color_ram, :cia1, :cia2, :keyboard, :joystick2
+                :vic, :sid, :color_ram, :cia1, :cia2, :keyboard, :joystick2,
+                :cartridge, :ultimax
 
     def initialize
       @ram = Memory.new([0xff, 0x07], length: 2**16, start: 0)
+      @cartridge = nil
 
       @basic_rom     = ROM.load("basic.rom",     0xa000)
       @character_rom = ROM.load("character.rom", 0xd000)
@@ -59,6 +69,12 @@ module Ruby64
       update_overlays!
     end
 
+    def attach_cartridge(cartridge)
+      @cartridge = cartridge
+      cartridge.on_change { update_overlays! }
+      update_overlays!
+    end
+
     def disable_overlays!
       poke(1, 0)
     end
@@ -80,14 +96,19 @@ module Ruby64
 
     private
 
-    # Banking changes only on $01 writes, so reads and writes dispatch
-    # through per-page handler tables instead of range checks.
+    # Banking changes only on $01 writes and cartridge line/bank changes,
+    # so reads and writes dispatch through per-page handler tables instead
+    # of range checks.
     def update_overlays!
+      @ultimax = @cartridge ? @cartridge.ultimax? : false
       @read_pages.fill(@ram)
       @write_pages.fill(@ram)
 
-      @read_pages.fill(basic_rom, 0xa0, 0x20) if basic?
-      @read_pages.fill(kernal_rom, 0xe0, 0x20) if kernal?
+      @ultimax ? map_ultimax_pages : map_banked_pages
+    end
+
+    def map_banked_pages
+      map_rom_overlays
 
       if io?
         map_io_pages
@@ -96,18 +117,54 @@ module Ruby64
       end
     end
 
+    def map_rom_overlays
+      @read_pages.fill(@cartridge.roml, 0x80, 0x20) if roml?
+      if romh?
+        @read_pages.fill(@cartridge.romh, 0xa0, 0x20)
+      elsif basic?
+        @read_pages.fill(basic_rom, 0xa0, 0x20)
+      end
+      @read_pages.fill(kernal_rom, 0xe0, 0x20) if kernal?
+    end
+
+    # Ultimax cartridges ignore the $01 lines: 4K of RAM, ROML/ROMH windows,
+    # I/O always visible and open address space everywhere else.
+    def map_ultimax_pages
+      @read_pages.fill(OpenSpace, 0x10, 0xf0)
+      @write_pages.fill(OpenSpace, 0x10, 0xf0)
+      @read_pages.fill(@cartridge.roml, 0x80, 0x20) if @cartridge.roml
+      @read_pages.fill(@cartridge.romh, 0xe0, 0x20) if @cartridge.romh
+      map_io_pages
+    end
+
     def map_io_pages
       {
         vic => 0xd0..0xd3, sid => 0xd4..0xd7, color_ram => 0xd8..0xdb,
         cia1 => 0xdc..0xdc, cia2 => 0xdd..0xdd
-        # 0xde/0xdf are open I/O and fall through to RAM
+        # 0xde/0xdf are open I/O unless a cartridge claims them
       }.each do |chip, pages|
         pages.each { |p| @read_pages[p] = @write_pages[p] = chip }
       end
+      return unless @cartridge
+
+      @read_pages.fill(@cartridge, 0xde, 2)
+      @write_pages.fill(@cartridge, 0xde, 2)
     end
 
     def basic?
-      io_port.kernal? && io_port.basic?
+      io_port.kernal? && io_port.basic? && game_high?
+    end
+
+    def game_high?
+      @cartridge.nil? || @cartridge.game == 1
+    end
+
+    def roml?
+      @cartridge&.roml && @cartridge.exrom.zero? && io_port.kernal? && io_port.basic?
+    end
+
+    def romh?
+      @cartridge&.romh && @cartridge.exrom.zero? && @cartridge.game.zero? && io_port.kernal?
     end
 
     def character?

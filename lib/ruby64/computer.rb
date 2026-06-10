@@ -51,6 +51,11 @@ module Ruby64
       end
     end
 
+    def attach_cartridge(cartridge)
+      address_bus.attach_cartridge(cartridge)
+      cpu.reset!
+    end
+
     def mount(storage)
       load_trap = KernalLoadTrap.new(cpu:, bus: address_bus, storage:)
       cpu.install_trap(KernalLoadTrap::ADDRESS) { load_trap.call }

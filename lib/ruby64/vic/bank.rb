@@ -18,6 +18,8 @@ module Ruby64
       end
 
       def peek(offset)
+        return ultimax_peek(offset) if @address_bus.ultimax
+
         bits = bank_switch_register
         if bits.allbits?(0b01) && (offset & 0xf000) == 0x1000
           @address_bus.character_rom.peek(0xc000 + offset)
@@ -39,6 +41,17 @@ module Ruby64
       end
 
       private
+
+      # In Ultimax mode the cartridge ROMH replaces the character ROM
+      # shadow, visible at $3000-$3FFF of the window.
+      def ultimax_peek(offset)
+        romh = @address_bus.cartridge.romh
+        if romh && offset.allbits?(0x3000)
+          romh.peek(0xe000 + (offset & 0x1fff))
+        else
+          @address_bus.ram.peek(BANK_STARTS[bank_switch_register] + offset)
+        end
+      end
 
       def bank_switch_register
         @address_bus.cia2.port_a_lines & 0b11

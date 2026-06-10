@@ -6,6 +6,7 @@ require "ruby64/storage/disk_image"
 require "ruby64/storage/d64_image"
 require "ruby64/storage/d71_image"
 require "ruby64/storage/d81_image"
+require "ruby64/storage/crt_file"
 
 module Ruby64
   module Storage

@@ -16,6 +16,8 @@ module Ruby64
         if File.directory?(path)
           computer.mount(Storage::HostDirectory.new(path))
           "Mounted #{path} as device 8"
+        elsif File.extname(path).downcase == ".crt"
+          attach_cartridge(computer, path)
         elsif (image = DISK_TYPES[File.extname(path).downcase])
           attach_disk(computer, image.new(path), path, autostart:)
         else
@@ -24,6 +26,11 @@ module Ruby64
       end
 
       private
+
+      def attach_cartridge(computer, path)
+        computer.attach_cartridge(Cartridge.from_file(path))
+        "Attached cartridge #{path}"
+      end
 
       def attach_disk(computer, image, path, autostart:)
         computer.mount(image)

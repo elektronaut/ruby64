@@ -91,6 +91,32 @@ describe Ruby64::Media do
       end
     end
 
+    context "with a CRT file" do
+      let(:crt_path) do
+        File.join(dir, "game.crt").tap do |path|
+          header = "C64 CARTRIDGE   ".b + [0x40, 0x0100, 0, 0, 1].pack("NnnCC") +
+                   ("\x00" * 6) + ("\x00" * 32)
+          chip = "CHIP".b + [0x2010, 0, 0, 0x8000, 0x2000].pack("Nn4") +
+                 ([0x42] * 0x2000).pack("C*")
+          File.binwrite(path, header + chip)
+        end
+      end
+
+      it "attaches the cartridge" do
+        allow(computer).to receive(:attach_cartridge)
+        described_class.attach(computer, crt_path)
+        expect(computer)
+          .to have_received(:attach_cartridge)
+          .with(instance_of(Ruby64::Cartridge::Standard))
+      end
+
+      it "returns an attach message" do
+        allow(computer).to receive(:attach_cartridge)
+        expect(described_class.attach(computer, crt_path))
+          .to include("game.crt")
+      end
+    end
+
     context "with a machine-language PRG file" do
       let(:prg_path) do
         File.join(dir, "test.prg").tap do |path|
