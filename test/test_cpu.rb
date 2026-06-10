@@ -18,6 +18,25 @@ TESTS = opcodes.flat_map do |opcode|
   tests
 end
 
+class RecordingMemory < Ruby64::Memory
+  attr_reader :accesses
+
+  def reset_log!
+    @accesses = []
+  end
+
+  def peek(addr)
+    value = super
+    @accesses << [addr, value, "read"] if @accesses
+    value
+  end
+
+  def poke(addr, value)
+    @accesses << [addr, value, "write"] if @accesses
+    super
+  end
+end
+
 class TestCPU < Minitest::Test
   include Ruby64::IntegerHelper
 
@@ -56,8 +75,28 @@ class TestCPU < Minitest::Test
     assert_status(state["p"], cpu.status)
   end
 
+  def assert_bus_activity(expected_cycles, accesses)
+    expected_writes = expected_cycles.select { |c| c.last == "write" }
+    writes = accesses.select { |c| c.last == "write" }
+
+    assert_equal(expected_writes, writes, "Bus writes")
+
+    expected_reads = expected_cycles.select { |c| c.last == "read" }
+    reads = accesses.select { |c| c.last == "read" }
+
+    assert(subsequence?(reads, expected_reads),
+           "Bus reads #{reads.inspect} not contained in " \
+           "#{expected_reads.inspect}")
+  end
+
+  def subsequence?(sub, full)
+    i = 0
+    full.each { |c| i += 1 if i < sub.length && sub[i] == c }
+    i == sub.length
+  end
+
   def setup_cpu(state)
-    cpu = Ruby64::CPU.new
+    cpu = Ruby64::CPU.new(RecordingMemory.new)
     cpu.program_counter = state["pc"]
     cpu.stack_pointer = state["s"]
     cpu.a = state["a"]
@@ -67,6 +106,7 @@ class TestCPU < Minitest::Test
     state["ram"].each do |addr, value|
       cpu.memory.poke(addr, value)
     end
+    cpu.memory.reset_log!
     cpu
   end
 
@@ -76,7 +116,10 @@ class TestCPU < Minitest::Test
       cpu.step!
 
       assert_registers(test["final"], cpu)
-      assert_equal(test["cycles"].length, cpu.cycles, "Cycle count") if TEST_CYCLES
+      if TEST_CYCLES
+        assert_equal(test["cycles"].length, cpu.cycles, "Cycle count")
+        assert_bus_activity(test["cycles"], cpu.memory.accesses)
+      end
 
       assert_memory(test["final"]["ram"], cpu.memory)
     end

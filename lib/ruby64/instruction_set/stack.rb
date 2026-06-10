@@ -44,20 +44,19 @@ module Ruby64
         @program_counter = addr
       end
 
-      # Jump to subroutine.
+      # Jump to subroutine. The operand high byte is fetched only after the
+      # return address has been pushed, so a JSR executing inside the stack
+      # jumps via the value its own push just wrote.
       #
       # Opcodes:
       #   $20 - absolute - 6 cycles
       def jsr(addr, _value)
-        stack_push16((program_counter - 1) & 0xffff)
-
-        @program_counter = uint16(
-          low_byte(addr),
-          # In case we're running inside the stack for some reason, compensate
-          # for the fact that pushing the program counter has garbled our
-          # program.
-          memory[(program_counter - 1) & 0xffff]
-        )
+        return_addr = (program_counter - 1) & 0xffff
+        cycle { @memory.peek(stack_address) } # internal cycle: dummy stack read
+        write_byte(stack_address, high_byte(return_addr))
+        write_byte(stack_address(-1), low_byte(return_addr))
+        @stack_pointer = (@stack_pointer - 2) & 0xff
+        @program_counter = uint16(addr, read_byte(return_addr))
       end
 
       # Return from interrupt.

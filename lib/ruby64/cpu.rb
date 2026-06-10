@@ -108,12 +108,11 @@ module Ruby64
 
     def read_operand(instruction)
       return nil unless instruction.operand?
+      # JSR fetches its operand high byte late (see Stack#jsr).
+      return read_byte(program_counter) if instruction.name == :jsr
+      return read_word(program_counter) if instruction.operand_length == 2
 
-      if instruction.operand_length == 2
-        read_word(program_counter)
-      else
-        read_byte(program_counter)
-      end
+      read_byte(program_counter)
     end
 
     def reset_registers
