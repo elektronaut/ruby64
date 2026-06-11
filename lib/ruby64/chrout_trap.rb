@@ -20,6 +20,10 @@ module Ruby64
       @output << ascii(@cpu.a) if @bus.io_port.kernal?
     end
 
+    def inspect
+      "#<#{self.class.name} output=#{@output.inspect}>"
+    end
+
     private
 
     def ascii(byte)

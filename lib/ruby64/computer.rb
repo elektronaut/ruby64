@@ -67,6 +67,10 @@ module Ruby64
       end
     end
 
+    def inspect
+      "#<#{self.class.name} cycles=#{@cycles} cpu=(#{@cpu.inspect})>"
+    end
+
     def on_init(&block)
       if booting?
         @init_handlers << block

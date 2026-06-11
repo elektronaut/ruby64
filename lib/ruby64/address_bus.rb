@@ -100,6 +100,12 @@ module Ruby64
       end
     end
 
+    def inspect
+      "#<#{self.class.name} port=#{format('0x%02x', @io_port.value)} " \
+        "cartridge=#{@cartridge ? @cartridge.class.name : 'none'} " \
+        "ultimax=#{@ultimax}>"
+    end
+
     private
 
     def update_port!
