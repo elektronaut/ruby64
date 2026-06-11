@@ -39,8 +39,8 @@ RSpec.describe Badline::VIC::Sequencer do
     sequencer.colors[x_pos, 8]
   end
 
-  def render_fg(bits, **opts)
-    render(bits, **opts)
+  def render_fg(bits, **)
+    render(bits, **)
     sequencer.fg[x_pos, 8]
   end
 

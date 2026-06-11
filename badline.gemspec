@@ -15,7 +15,7 @@ Gem::Specification.new do |spec|
                      "CRT cartridges."
   spec.homepage = "https://github.com/elektronaut/badline"
   spec.license = "MIT"
-  spec.required_ruby_version = ">= 3.3"
+  spec.required_ruby_version = ">= 4.0"
 
   spec.metadata["source_code_uri"] = spec.homepage
   spec.metadata["rubygems_mfa_required"] = "true"
