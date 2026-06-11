@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "badline/version"
 require "badline/integer_helper"
 require "badline/addressable"
 require "badline/memory"

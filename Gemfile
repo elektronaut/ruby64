@@ -2,7 +2,7 @@
 
 source "https://rubygems.org"
 
-gem "ruby-sdl2"
+gemspec
 
 group :development, :test do
   gem "minitest"

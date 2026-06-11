@@ -1,3 +1,9 @@
+PATH
+  remote: .
+  specs:
+    badline (0.1.0)
+      ruby-sdl2 (~> 0.3)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -90,6 +96,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  badline!
   codeclimate-test-reporter
   minitest
   pry
@@ -100,7 +107,6 @@ DEPENDENCIES
   rubocop-rake
   rubocop-rspec
   ruby-prof
-  ruby-sdl2
   simplecov (~> 0.17.1)
   timecop
 

@@ -1,2 +1,4 @@
 /coverage
+/pkg/
 /test/fixtures/65x02/
+*.gem
