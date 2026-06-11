@@ -37,6 +37,9 @@ module Ruby64
       def poke(_addr, _value); end
     end
 
+    PORT_PULLUPS  = 0b0001_0111
+    PORT_FLOATING = 0b1100_1000
+
     attr_reader :io_port, :ram, :basic_rom, :character_rom, :kernal_rom,
                 :vic, :sid, :color_ram, :cia1, :cia2, :keyboard, :joystick2,
                 :cartridge, :ultimax
@@ -61,8 +64,10 @@ module Ruby64
 
       @color_ram = ColorMemory.new(start: 0xd800, length: 2**10)
 
-      @io_port = Status.new(%i[basic kernal io tape_out tape_switch tape_motor],
-                            value: 0b00110111)
+      @port_ddr = 0x2f
+      @port_out = 0x37
+      @port_floating = 0x00
+      @io_port = Status.new(%i[basic kernal io tape_out tape_switch tape_motor], value: port_value)
 
       @read_pages = Array.new(256)
       @write_pages = Array.new(256)
@@ -80,21 +85,34 @@ module Ruby64
     end
 
     def peek(addr)
+      return @port_ddr if addr.zero?
       return @io_port.value if addr == 0x01
 
       @read_pages[addr >> 8].peek(addr)
     end
 
     def poke(addr, value)
-      if addr == 0x01
-        @io_port.value = value
-        update_overlays!
+      if addr < 0x02
+        addr.zero? ? @port_ddr = value : @port_out = value
+        update_port!
       else
         @write_pages[addr >> 8].poke(addr, value)
       end
     end
 
     private
+
+    def update_port!
+      driven = @port_ddr & PORT_FLOATING
+      @port_floating = (@port_floating & ~driven) | (@port_out & driven)
+      @io_port.value = port_value
+      update_overlays!
+    end
+
+    def port_value
+      input = PORT_PULLUPS | (@port_floating & PORT_FLOATING)
+      (@port_out & @port_ddr) | (input & ~@port_ddr & 0xff)
+    end
 
     # Banking changes only on $01 writes and cartridge line/bank changes,
     # so reads and writes dispatch through per-page handler tables instead

@@ -1,13 +1,24 @@
 # frozen_string_literal: true
 
+require "forwardable"
+require "ruby64/cia/timer"
+
 module Ruby64
   # CIA (Complex Interface Adapter) chip
   class CIA
     include Addressable
+    extend Forwardable
 
-    attr_accessor :timer_a, :timer_b, :timer_a_latch, :timer_b_latch
-    attr_reader :start, :control_a, :control_b,
-                :interrupt_status, :interrupt_control, :peripheral
+    attr_reader :start, :control_a, :control_b, :interrupt_status, :interrupt_control, :peripheral
+
+    def_delegator :@ta, :counter,  :timer_a
+    def_delegator :@ta, :counter=, :timer_a=
+    def_delegator :@ta, :latch,    :timer_a_latch
+    def_delegator :@ta, :latch=,   :timer_a_latch=
+    def_delegator :@tb, :counter,  :timer_b
+    def_delegator :@tb, :counter=, :timer_b=
+    def_delegator :@tb, :latch,    :timer_b_latch
+    def_delegator :@tb, :latch=,   :timer_b_latch=
 
     def initialize(start: 0, peripheral: nil)
       addressable_at(start, length: 2**8)
@@ -17,10 +28,7 @@ module Ruby64
       @data_port_b = 0xff
       @data_dir_a = 0xff
       @data_dir_b = 0x0
-      @timer_a = @timer_b = 0x0
-      @timer_a_latch = @timer_b_latch = 0x0
-      @timer_a_reached_zero = @timer_b_reached_zero = false
-      @pb6_toggle = @pb7_toggle = true
+      @irq_pending = 0
       @serial_data = 0x0
       @tod = TimeOfDay.new
       @interrupt_control = Status.new([:timer_a, :timer_b, :alarm, :serial,
@@ -30,11 +38,13 @@ module Ruby64
       @control_a = Status.new(%i[start output out_mode run_mode load
                                  in_mode serial_mode clock_frequency])
       @control_b = Status.new(%i[start output out_mode run_mode load
-                                 count_a in_mode alarm])
+                                 in_cnt in_timer_a alarm])
+      @ta = Timer.new(@control_a)
+      @tb = Timer.new(@control_b)
     end
 
-    def interrupt!
-      interrupt_status.interrupt = true
+    def interrupt!(delay = 1)
+      @irq_pending = @irq_pending.positive? ? [@irq_pending, delay].min : delay
     end
 
     def interrupted?
@@ -42,6 +52,10 @@ module Ruby64
     end
 
     def cycle!
+      if @irq_pending.positive?
+        @irq_pending -= 1
+        interrupt_status.interrupt = true if @irq_pending.zero?
+      end
       update_timers
       @tod.cycle! { trigger_alarm }
     end
@@ -69,10 +83,10 @@ module Ruby64
       when 0x01 then read_port_b
       when 0x02 then @data_dir_a
       when 0x03 then @data_dir_b
-      when 0x04 then low_byte(timer_a)
-      when 0x05 then high_byte(timer_a)
-      when 0x06 then low_byte(timer_b)
-      when 0x07 then high_byte(timer_b)
+      when 0x04 then low_byte(@ta.counter)
+      when 0x05 then high_byte(@ta.counter)
+      when 0x06 then low_byte(@tb.counter)
+      when 0x07 then high_byte(@tb.counter)
       when 0x08 then @tod.tenths
       when 0x09 then @tod.seconds
       when 0x0a then @tod.minutes
@@ -81,6 +95,7 @@ module Ruby64
       when 0x0d
         value = interrupt_status.value
         interrupt_status.value = 0x0 # Burn after reading
+        @irq_pending = 0
         value
       when 0x0e then control_a.value
       when 0x0f then control_b.value
@@ -93,10 +108,10 @@ module Ruby64
       when 0x01 then @data_port_b = value
       when 0x02 then @data_dir_a = value
       when 0x03 then @data_dir_b = value
-      when 0x04 then @timer_a_latch = uint16(value, high_byte(@timer_a_latch))
-      when 0x05 then write_timer_a_high(value)
-      when 0x06 then @timer_b_latch = uint16(value, high_byte(@timer_b_latch))
-      when 0x07 then write_timer_b_high(value)
+      when 0x04 then @ta.write_latch_low(value)
+      when 0x05 then @ta.write_latch_high(value)
+      when 0x06 then @tb.write_latch_low(value)
+      when 0x07 then @tb.write_latch_high(value)
       when 0x08 then @tod.write(:tenths, value, alarm: control_b.alarm?)
       when 0x09 then @tod.write(:seconds, value, alarm: control_b.alarm?)
       when 0x0a then @tod.write(:minutes, value, alarm: control_b.alarm?)
@@ -104,8 +119,8 @@ module Ruby64
       when 0x0c
         # TODO: Serial
       when 0x0d then write_interrupt_control(value)
-      when 0x0e then write_control_a(value)
-      when 0x0f then write_control_b(value)
+      when 0x0e then @ta.write_control(value)
+      when 0x0f then @tb.write_control(value)
       end
     end
 
@@ -124,11 +139,11 @@ module Ruby64
     end
 
     def timer_a_output?
-      control_a.out_mode? ? @pb6_toggle : @timer_a_reached_zero
+      control_a.out_mode? ? @ta.toggle? : @ta.underflowed
     end
 
     def timer_b_output?
-      control_b.out_mode? ? @pb7_toggle : @timer_b_reached_zero
+      control_b.out_mode? ? @tb.toggle? : @tb.underflowed
     end
 
     def with_bit(value, bit, set)
@@ -141,67 +156,21 @@ module Ruby64
     end
 
     def update_timers
-      @timer_a_reached_zero = false
-      @timer_b_reached_zero = false
-      update_timer_a if @control_a.value.anybits?(0x01)
-      update_timer_b if @control_b.value.anybits?(0x01)
-    end
-
-    def update_timer_a
-      @timer_a -= 1
-      return if timer_a.positive?
-
-      @timer_a_reached_zero = true
-      @pb6_toggle = !@pb6_toggle
-      interrupt_status.timer_a = true
-      interrupt! if interrupt_control.timer_a?
-
-      # Stop timer if one-short mode
-      control_a.start = false if control_a.run_mode?
-
-      @timer_a = timer_a_latch
-    end
-
-    def update_timer_b
-      if control_b.count_a?
-        @timer_b -= 1 if @timer_a_reached_zero
+      @ta.cycle!(@control_a.value.nobits?(0x20), true)
+      crb = @control_b.value
+      if crb.anybits?(0x40)
+        @tb.cycle!(true, @ta.underflowed)
       else
-        @timer_b -= 1 # Count CPU cycles
+        @tb.cycle!(crb.nobits?(0x20), true)
       end
-      return if timer_b.positive?
+      if @ta.underflowed
+        interrupt_status.timer_a = true
+        interrupt! if interrupt_control.timer_a?
+      end
+      return unless @tb.underflowed
 
-      @timer_b_reached_zero = true
-      @pb7_toggle = !@pb7_toggle
       interrupt_status.timer_b = true
       interrupt! if interrupt_control.timer_b?
-
-      # Stop timer if one-short mode
-      control_b.start = false if control_b.run_mode?
-
-      @timer_b = timer_b_latch
-    end
-
-    def write_timer_a_high(value)
-      @timer_a_latch = uint16(low_byte(@timer_a_latch), value)
-      @timer_a = @timer_a_latch unless control_a.start?
-    end
-
-    def write_timer_b_high(value)
-      @timer_b_latch = uint16(low_byte(@timer_b_latch), value)
-      @timer_b = @timer_b_latch unless control_b.start?
-    end
-
-    def write_control_a(value)
-      # Starting the timer sets the toggle output high.
-      @pb6_toggle = true if value.anybits?(0x01)
-      control_a.value = value & ~0x10
-      @timer_a = timer_a_latch if value.anybits?(0x10)
-    end
-
-    def write_control_b(value)
-      @pb7_toggle = true if value.anybits?(0x01)
-      control_b.value = value & ~0x10
-      @timer_b = timer_b_latch if value.anybits?(0x10)
     end
 
     def write_interrupt_control(value)
@@ -212,6 +181,9 @@ module Ruby64
         # Set interrupts based on bits 0-4
         interrupt_control.value |= (value & 0x1f)
       end
+      return unless interrupt_control.value.anybits?(interrupt_status.value & 0x1f)
+
+      interrupt!(2) unless interrupted?
     end
   end
 end

@@ -63,8 +63,9 @@ describe Ruby64::CIA do
         expect(cia.interrupt_status.alarm?).to be(true)
       end
 
-      it "interrupts when the clock matches" do
+      it "interrupts the cycle after the clock matches" do
         advance_one_tenth
+        cia.cycle!
         expect(cia.interrupted?).to be(true)
       end
     end
@@ -91,7 +92,7 @@ describe Ruby64::CIA do
     context "when the source is enabled" do
       before do
         cia.interrupt_control.timer_a = true
-        cia.cycle! # underflow asserts the line
+        3.times { cia.cycle! } # underflow; the line asserts on the next cycle
       end
 
       it "stays asserted across cycles until acknowledged" do
@@ -108,7 +109,7 @@ describe Ruby64::CIA do
     context "when the source is masked" do
       before do
         cia.interrupt_control.timer_a = false
-        cia.cycle! # underflow with the source disabled
+        3.times { cia.cycle! } # underflow with the source disabled
       end
 
       it "still records the event in the status register" do
@@ -127,7 +128,7 @@ describe Ruby64::CIA do
       cia.control_a.start = true
       cia.timer_a = 0xff
       cia.timer_a_latch = 0x43
-      cia.cycle!
+      3.times { cia.cycle! } # counting starts once the pipeline fills
     end
 
     specify { expect(cia.timer_a).to eq(0xfe) }
@@ -137,10 +138,17 @@ describe Ruby64::CIA do
     context "when reaching zero" do
       before { 254.times { cia.cycle! } }
 
-      specify { expect(cia.timer_a).to eq(0x43) }
+      specify { expect(cia.timer_a).to eq(0x00) }
       specify { expect(cia.interrupt_status.timer_a?).to be(true) }
-      specify { expect(cia.interrupted?).to be(true) }
+      specify { expect(cia.interrupted?).to be(false) }
       specify { expect(cia.control_a.start?).to be(true) }
+    end
+
+    context "when a cycle has passed after reaching zero" do
+      before { 255.times { cia.cycle! } }
+
+      specify { expect(cia.timer_a).to eq(0x43) }
+      specify { expect(cia.interrupted?).to be(true) }
     end
 
     describe "setting the latch" do
@@ -165,6 +173,32 @@ describe Ruby64::CIA do
       end
     end
 
+    describe "starting through the control register" do
+      before do
+        cia.control_a.start = false
+        2.times { cia.cycle! } # drain the pipeline
+        cia.timer_a = 0x10
+        cia.poke(0xdc0e, 0x01)
+      end
+
+      it "delays the first count by the pipeline latency" do
+        2.times { cia.cycle! }
+        expect(cia.timer_a).to eq(0x10)
+      end
+
+      it "counts once the pipeline is filled" do
+        3.times { cia.cycle! }
+        expect(cia.timer_a).to eq(0x0f)
+      end
+
+      it "does not delay an already running timer" do
+        3.times { cia.cycle! }
+        cia.poke(0xdc0e, 0x01)
+        cia.cycle!
+        expect(cia.timer_a).to eq(0x0e)
+      end
+    end
+
     describe "force load" do
       before do
         cia.timer_a = 0x1000
@@ -172,7 +206,8 @@ describe Ruby64::CIA do
         cia.poke(0xdc0e, 0x10)
       end
 
-      it "copies the latch into the counter" do
+      it "copies the latch into the counter one tick after the write" do
+        2.times { cia.cycle! }
         expect(cia.timer_a).to eq(0x43)
       end
 
@@ -191,7 +226,23 @@ describe Ruby64::CIA do
     end
 
     context "when disabled" do
-      before { cia.control_a.start = false }
+      before do
+        cia.control_a.start = false
+        2.times { cia.cycle! } # counting drains out of the pipeline
+      end
+
+      it "is not decremented" do
+        cia.timer_a = 0xffff
+        cia.cycle!
+        expect(cia.timer_a).to eq(0xffff)
+      end
+    end
+
+    context "when counting the CNT pin" do
+      before do
+        cia.control_a.in_mode = true
+        2.times { cia.cycle! } # φ2 pulses drain out of the pipeline
+      end
 
       it "is not decremented" do
         cia.timer_a = 0xffff
@@ -207,7 +258,7 @@ describe Ruby64::CIA do
       cia.control_b.start = true
       cia.timer_b = 0xff
       cia.timer_b_latch = 0x43
-      cia.cycle!
+      3.times { cia.cycle! } # counting starts once the pipeline fills
     end
 
     specify { expect(cia.timer_b).to eq(0xfe) }
@@ -217,10 +268,17 @@ describe Ruby64::CIA do
     context "when reaching zero" do
       before { 254.times { cia.cycle! } }
 
-      specify { expect(cia.timer_b).to eq(0x43) }
+      specify { expect(cia.timer_b).to eq(0x00) }
       specify { expect(cia.interrupt_status.timer_b?).to be(true) }
-      specify { expect(cia.interrupted?).to be(true) }
+      specify { expect(cia.interrupted?).to be(false) }
       specify { expect(cia.control_b.start?).to be(true) }
+    end
+
+    context "when a cycle has passed after reaching zero" do
+      before { 255.times { cia.cycle! } }
+
+      specify { expect(cia.timer_b).to eq(0x43) }
+      specify { expect(cia.interrupted?).to be(true) }
     end
 
     describe "setting the latch" do
@@ -242,7 +300,10 @@ describe Ruby64::CIA do
     end
 
     context "when disabled" do
-      before { cia.control_b.start = false }
+      before do
+        cia.control_b.start = false
+        2.times { cia.cycle! } # counting drains out of the pipeline
+      end
 
       it "is not decremented" do
         cia.timer_b = 0xffff
@@ -251,10 +312,24 @@ describe Ruby64::CIA do
       end
     end
 
+    context "when counting the CNT pin" do
+      before do
+        cia.control_b.start = true
+        cia.control_b.in_cnt = true
+        2.times { cia.cycle! } # φ2 pulses drain out of the pipeline
+      end
+
+      it "never decrements" do
+        cia.timer_b = 0xffff
+        4.times { cia.cycle! }
+        expect(cia.timer_b).to eq(0xffff)
+      end
+    end
+
     context "when counting timer A underflows" do
       before do
         cia.control_b.start = true
-        cia.control_b.count_a = true
+        cia.control_b.in_timer_a = true
         cia.timer_b = 0x05
         cia.control_a.start = true
         cia.timer_a = 0x02
@@ -262,13 +337,12 @@ describe Ruby64::CIA do
       end
 
       it "decrements only when timer A reaches zero" do
-        cia.cycle! # timer A 2 -> 1
-        cia.cycle! # timer A 1 -> 0, underflow
+        4.times { cia.cycle! } # pipeline, timer A 2 -> 1 -> 0, underflow
         expect(cia.timer_b).to eq(0x04)
       end
 
       it "does not decrement while timer A is still counting" do
-        cia.cycle! # timer A 2 -> 1
+        3.times { cia.cycle! } # pipeline, timer A 2 -> 1
         expect(cia.timer_b).to eq(0x05)
       end
     end
@@ -284,13 +358,13 @@ describe Ruby64::CIA do
       end
 
       it "drives PB6 high on the underflow cycle" do
-        cia.cycle!
+        3.times { cia.cycle! }
         expect(cia[0xdc01][6]).to eq(1)
       end
 
       it "drives PB6 low on non-underflow cycles" do
-        cia.cycle! # underflow, reload to 0x10
-        cia.cycle! # 0x10 -> 0x0f, no underflow
+        3.times { cia.cycle! } # underflow
+        cia.cycle! # reload to 0x10, no underflow
         expect(cia[0xdc01][6]).to eq(0)
       end
     end
@@ -305,12 +379,12 @@ describe Ruby64::CIA do
       end
 
       it "drives PB6 low after the first underflow" do
-        cia.cycle!
+        3.times { cia.cycle! }
         expect(cia[0xdc01][6]).to eq(0)
       end
 
       it "drives PB6 high after the second underflow" do
-        2.times { cia.cycle! }
+        5.times { cia.cycle! } # reload after the first, count back to zero
         expect(cia[0xdc01][6]).to eq(1)
       end
     end
@@ -324,7 +398,7 @@ describe Ruby64::CIA do
       end
 
       it "drives PB7 high on the underflow cycle" do
-        cia.cycle!
+        3.times { cia.cycle! }
         expect(cia[0xdc01][7]).to eq(1)
       end
     end
@@ -336,12 +410,18 @@ describe Ruby64::CIA do
         cia.control_a.start = true
         cia.timer_a = 0x01
         cia.timer_a_latch = 0x05
-        cia.cycle! # underflow toggles PB6 low
+        3.times { cia.cycle! } # underflow toggles PB6 low
       end
 
       it "sets the toggle output high when the timer is started" do
+        cia.poke(0xdc0e, 0b00000110) # stop
         cia.poke(0xdc0e, 0b00000111) # start + output + toggle
         expect(cia[0xdc01][6]).to eq(1)
+      end
+
+      it "leaves the toggle state alone while the timer is running" do
+        cia.poke(0xdc0e, 0b00000111) # start while already started
+        expect(cia[0xdc01][6]).to eq(0)
       end
     end
   end
