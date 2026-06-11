@@ -5,7 +5,6 @@ source "https://rubygems.org"
 gem "ruby-sdl2"
 
 group :development, :test do
-  gem "benchmark-ips"
   gem "minitest"
   gem "pry"
   gem "rake"
