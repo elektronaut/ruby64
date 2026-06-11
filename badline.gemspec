@@ -25,7 +25,7 @@ Gem::Specification.new do |spec|
     ls.readlines("\x0", chomp: true).reject do |f|
       (f == gemspec) ||
         f.start_with?("bin/", "test/", "spec/", ".git", ".rubocop",
-                      "Gemfile", "Rakefile")
+                      ".release-please", "release-please", "Gemfile", "Rakefile")
     end
   end
   spec.bindir = "exe"
