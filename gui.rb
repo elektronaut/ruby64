@@ -3,7 +3,7 @@
 
 $LOAD_PATH.unshift(File.join(File.dirname(__FILE__), "lib"))
 
-require "ruby64"
+require "badline"
 require "sdl2"
 
 require_relative "gui/palette"
@@ -17,4 +17,4 @@ require_relative "gui/application"
 autostart = !ARGV.delete("--no-autostart")
 media_path = ARGV[0] if ARGV[0] && File.exist?(ARGV[0])
 
-Ruby64::GUI::Application.new(media_path:, autostart:).run
+Badline::GUI::Application.new(media_path:, autostart:).run

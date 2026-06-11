@@ -3,5 +3,5 @@
 require "simplecov"
 SimpleCov.start
 
-require "ruby64"
+require "badline"
 require "timecop"

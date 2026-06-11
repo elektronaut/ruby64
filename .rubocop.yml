@@ -13,7 +13,7 @@ AllCops:
 
 Metrics/AbcSize:
   Exclude:
-    - "lib/ruby64/instruction.rb"
+    - "lib/badline/instruction.rb"
 
 Metrics/BlockLength:
   Exclude:
@@ -21,12 +21,12 @@ Metrics/BlockLength:
 
 Metrics/ClassLength:
   Exclude:
-    - "lib/ruby64/instruction.rb"
-    - "lib/ruby64/vic.rb"
+    - "lib/badline/instruction.rb"
+    - "lib/badline/vic.rb"
 
 Metrics/MethodLength:
   Exclude:
-    - "lib/ruby64/instruction.rb"
+    - "lib/badline/instruction.rb"
 
 Style/AsciiComments:
   Enabled: false

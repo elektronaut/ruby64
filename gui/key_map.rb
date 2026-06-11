@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module Ruby64
+module Badline
   module GUI
     # Translates SDL key events into the emulator's key symbols.
     #

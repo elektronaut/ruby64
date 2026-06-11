@@ -26,7 +26,7 @@ Metrics/ClassLength:
 # Configuration parameters: LengthThreshold.
 Metrics/CollectionLiteralLength:
   Exclude:
-    - 'lib/ruby64/instruction.rb'
+    - 'lib/badline/instruction.rb'
 
 # Offense count: 4
 # Configuration parameters: AllowedMethods, AllowedPatterns.

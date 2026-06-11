@@ -2,9 +2,9 @@
 
 require "minitest/autorun"
 require "json"
-require "ruby64"
+require "badline"
 
-opcodes = Ruby64::Instruction.map.keys
+opcodes = Badline::Instruction.map.keys
 
 TEST_CYCLES = true
 
@@ -18,7 +18,7 @@ TESTS = opcodes.flat_map do |opcode|
   tests
 end
 
-class RecordingMemory < Ruby64::Memory
+class RecordingMemory < Badline::Memory
   attr_reader :accesses
 
   def reset_log!
@@ -38,7 +38,7 @@ class RecordingMemory < Ruby64::Memory
 end
 
 class TestCPU < Minitest::Test
-  include Ruby64::IntegerHelper
+  include Badline::IntegerHelper
 
   def assert_equal_hex(expectation, actual, msg = nil)
     assert_equal(expectation.to_s(16), actual.to_s(16), msg)
@@ -54,8 +54,8 @@ class TestCPU < Minitest::Test
   end
 
   def assert_status(expected_value, actual)
-    expectation = Ruby64::Status.new(Ruby64::CPU::STATUS_FLAGS,
-                                     value: expected_value)
+    expectation = Badline::Status.new(Badline::CPU::STATUS_FLAGS,
+                                      value: expected_value)
 
     assert_equal(expectation.carry, actual.carry, "status: carry")
     assert_equal(expectation.zero, actual.zero, "status: zero")
@@ -96,7 +96,7 @@ class TestCPU < Minitest::Test
   end
 
   def setup_cpu(state)
-    cpu = Ruby64::CPU.new(RecordingMemory.new)
+    cpu = Badline::CPU.new(RecordingMemory.new)
     cpu.program_counter = state["pc"]
     cpu.stack_pointer = state["s"]
     cpu.a = state["a"]

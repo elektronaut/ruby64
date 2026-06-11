@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-module Ruby64
+module Badline
   module GUI
     class Application
       PAL_CLOCK_HZ = 985_248
-      TITLE = "Ruby64"
+      TITLE = "Badline"
       TOGGLE_SYM = SDL2::Key::TAB
 
       SHARED_KEYS = %i[up left cursor_h cursor_v space].freeze

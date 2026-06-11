@@ -4,8 +4,8 @@
 $LOAD_PATH.unshift(File.join(File.dirname(__FILE__), "lib"))
 
 require "pry"
-require "ruby64"
-computer = Ruby64::Computer.new(debug: true)
+require "badline"
+computer = Badline::Computer.new(debug: true)
 
 begin
   loop { computer.cycle! }

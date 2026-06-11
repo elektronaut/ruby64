@@ -3,9 +3,9 @@
 
 $LOAD_PATH.unshift(File.join(File.dirname(__FILE__), "lib"))
 
-require "ruby64"
+require "badline"
 require "benchmark/ips"
-computer = Ruby64::Computer.new
+computer = Badline::Computer.new
 
 Benchmark.ips do |x|
   x.config(time: 10, warmup: 5)

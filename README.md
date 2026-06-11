@@ -1,10 +1,10 @@
-![Build](https://github.com/elektronaut/ruby64/workflows/Build/badge.svg)
-[![Code Climate](https://codeclimate.com/github/elektronaut/ruby64/badges/gpa.svg)](https://codeclimate.com/github/elektronaut/ruby64)
-[![Code Climate](https://codeclimate.com/github/elektronaut/ruby64/badges/coverage.svg)](https://codeclimate.com/github/elektronaut/ruby64)
+![Build](https://github.com/elektronaut/badline/workflows/Build/badge.svg)
+[![Code Climate](https://codeclimate.com/github/elektronaut/badline/badges/gpa.svg)](https://codeclimate.com/github/elektronaut/badline)
+[![Code Climate](https://codeclimate.com/github/elektronaut/badline/badges/coverage.svg)](https://codeclimate.com/github/elektronaut/badline)
 
-# Ruby64
+# Badline
 
-Ruby64 is a Commodore 64 emulator in written in Ruby. It is cycle accurate,
+Badline is a Commodore 64 emulator in written in Ruby. It is cycle accurate,
 utilizing Fibers to emulate cycles.
 
 Currently the memory map and 6510 CPU is working.

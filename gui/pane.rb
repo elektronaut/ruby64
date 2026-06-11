@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module Ruby64
+module Badline
   module GUI
     class Pane
       attr_reader :left, :top, :width, :height

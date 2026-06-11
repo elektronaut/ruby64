@@ -3,9 +3,9 @@
 
 $LOAD_PATH.unshift(File.join(File.dirname(__FILE__), "lib"))
 
-require "ruby64"
+require "badline"
 require "ruby-prof"
-computer = Ruby64::Computer.new
+computer = Badline::Computer.new
 profile = RubyProf::Profile.new
 
 iterations = 100_000
