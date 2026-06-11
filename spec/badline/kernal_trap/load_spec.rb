@@ -4,7 +4,7 @@ require "spec_helper"
 require "tmpdir"
 require "fileutils"
 
-describe Badline::KernalLoadTrap do
+describe Badline::KernalTrap::Load do
   let(:computer) { Badline::Computer.new }
   let(:ram) { computer.ram }
   let(:dir) { Dir.mktmpdir }
@@ -76,6 +76,15 @@ describe Badline::KernalLoadTrap do
   describe "a PETSCII shifted-letter filename" do
     before do
       request_load("\xC4\xC1\xD4\xC1".b) # "DATA" with shifted letters
+      run_trap
+    end
+
+    specify { expect(ram.read(0xc000, 2)).to eq([0xaa, 0xbb]) }
+  end
+
+  describe "a drive-prefixed filename" do
+    before do
+      request_load("0:DATA")
       run_trap
     end
 

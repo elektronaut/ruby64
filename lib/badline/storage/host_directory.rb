@@ -15,6 +15,11 @@ module Badline
         P00.wraps?(bytes) ? P00.data(bytes) : bytes
       end
 
+      def write_file(name, bytes)
+        host_name = "#{name.downcase.tr('/', '_')}.prg"
+        File.binwrite(File.join(@path, host_name), bytes.pack("C*"))
+      end
+
       private
 
       def find(name)

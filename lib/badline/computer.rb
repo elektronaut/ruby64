@@ -57,8 +57,12 @@ module Badline
     end
 
     def mount(storage)
-      load_trap = KernalLoadTrap.new(cpu:, bus: address_bus, storage:)
-      cpu.install_trap(KernalLoadTrap::ADDRESS) { load_trap.call }
+      load_trap = KernalTrap::Load.new(cpu:, bus: address_bus, storage:)
+      cpu.install_trap(KernalTrap::Load::ADDRESS) { load_trap.call }
+      return unless storage.respond_to?(:write_file)
+
+      save_trap = KernalTrap::Save.new(cpu:, bus: address_bus, storage:)
+      cpu.install_trap(KernalTrap::Save::ADDRESS) { save_trap.call }
     end
 
     def capture_output

@@ -57,4 +57,26 @@ describe Badline::Storage::HostDirectory do
       expect(storage.read_file("zz-fake")).to be_nil
     end
   end
+
+  describe "#write_file" do
+    before { storage.write_file("NEW GAME", [0x00, 0xc0, 0x42]) }
+
+    it "writes a .prg file with a lowercased name" do
+      expect(File.binread(File.join(dir, "new game.prg")).bytes).to eq([0x00, 0xc0, 0x42])
+    end
+
+    it "serves the written file back" do
+      expect(storage.read_file("NEW GAME")).to eq([0x00, 0xc0, 0x42])
+    end
+
+    it "overwrites an existing file" do
+      storage.write_file("INTRO", [0x00, 0x10, 0x99])
+      expect(storage.read_file("INTRO")).to eq([0x00, 0x10, 0x99])
+    end
+
+    it "keeps path separators out of the host filename" do
+      storage.write_file("A/B", [0x01])
+      expect(File.binread(File.join(dir, "a_b.prg")).bytes).to eq([0x01])
+    end
+  end
 end
