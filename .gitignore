@@ -1,4 +1,5 @@
 /coverage
+/log/
 /pkg/
-/test/fixtures/65x02/
+/vendor/
 *.gem

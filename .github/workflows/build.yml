@@ -61,7 +61,7 @@ jobs:
       - name: Cache 65x02 test fixtures
         uses: actions/cache@v4
         with:
-          path: test/fixtures/65x02
+          path: vendor/65x02
           key: 65x02-fixtures-6502-v1
       - name: Run tests
         run: bundle exec rake test
